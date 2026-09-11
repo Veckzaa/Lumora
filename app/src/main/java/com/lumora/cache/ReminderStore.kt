@@ -39,6 +39,14 @@ object ReminderStore {
         return cache.values.toList()
     }
 
+    /** Lets the guide skip building a lookup key per programme block when nothing is armed,
+     *  which is the usual state: 16 string concatenations per row bind, for nothing. */
+    @Synchronized
+    fun isEmpty(context: Context): Boolean {
+        ensureLoaded(context)
+        return cache.isEmpty()
+    }
+
     @Synchronized
     fun get(context: Context, key: String): ProgramReminder? {
         ensureLoaded(context)

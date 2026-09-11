@@ -225,9 +225,9 @@ internal fun MainActivity.toggleFavoriteChannel(channel: Channel) {
     ).show()
     if (activeTab == 0) scope.launch { rebuildCategoriesForActiveTab() }
     refreshHomeShelvesIfShowing()
-    // The guide's per-row star reads the favourite store at bind time - repaint the
-    // list so the toggle lands immediately (submitList diff on the same list is a no-op).
-    if (activeTab == 0) liveAdapter.notifyDataSetChanged()
+    // The guide's per-row star reads the favourite store at bind time - rebind that row so
+    // the toggle lands immediately (submitList diff on the same list is a no-op).
+    if (activeTab == 0) liveAdapter.notifyChannelChanged(channel.id)
 }
 
 /** Long-press handler for any VOD poster (Home/Series/Films shelves and the category
@@ -309,7 +309,7 @@ internal fun MainActivity.toggleProgramReminder(channel: Channel, program: Xtrea
             Toast.LENGTH_SHORT
         ).show()
     }
-    liveAdapter.notifyDataSetChanged()
+    liveAdapter.notifyChannelChanged(channel.id)
 }
 
 internal fun MainActivity.liveCategoryPriority(name: String): Int {

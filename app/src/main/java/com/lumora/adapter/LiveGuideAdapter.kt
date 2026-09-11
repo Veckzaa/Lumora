@@ -36,13 +36,6 @@ private const val NOW_NEXT_SEPARATOR = " · "
 // request at all - this is what keeps scrolling through thousands of channels smooth.
 private const val LOAD_DEBOUNCE_MS = 200L
 
-private data class RenderBlock(
-    val title: String,
-    val widthPx: Int,
-    val isCurrent: Boolean,
-    val program: XtreamClient.EpgProgram?
-)
-
 /**
  * What a programme block currently shows, carried on the block View's own tag.
  *
@@ -64,6 +57,8 @@ class LiveGuideAdapter(
     private val onChannelFavClick: ((Channel) -> Unit)? = null,
     private val onProgramLongPress: ((Channel, XtreamClient.EpgProgram) -> Unit)? = null,
     private val isReminderSet: (String) -> Boolean = { false },
+    /** False when no reminder is armed at all, so a bind never builds a key per block. */
+    private val hasAnyReminder: () -> Boolean = { false },
     private val isChannelFavourite: (String) -> Boolean = { false },
     private val fetchPrograms: suspend (String) -> List<XtreamClient.EpgProgram>?
 ) : ListAdapter<Channel, LiveGuideAdapter.RowViewHolder>(DiffCallback()) {
@@ -113,6 +108,14 @@ class LiveGuideAdapter(
         } finally {
             broadcasting = false
         }
+    }
+
+    /** Rebinds the rows showing [channelId] (its favourite star, its reminder blocks). The
+     *  callers used to notifyDataSetChanged(), which rebinds and re-measures every row on
+     *  screen for a change to one of them. */
+    fun notifyChannelChanged(channelId: String) {
+        val list = currentList
+        for (i in list.indices) if (list[i].id == channelId) notifyItemChanged(i)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RowViewHolder {
@@ -334,47 +337,61 @@ class LiveGuideAdapter(
         }
 
         private fun renderPrograms(channel: Channel, programs: List<XtreamClient.EpgProgram>?, pending: Boolean = false) {
-            val blocks: List<RenderBlock> = if (pending) {
-                // Fetch still out: skeleton blocks rather than "No programme info", which
-                // flashing for 200ms before data lands reads as the guide glitching.
-                val rotation = (channel.id.hashCode() and 0x7fffffff) % SKELETON_MINUTES.size
-                SKELETON_MINUTES.indices.map { i ->
-                    val minutes = SKELETON_MINUTES[(i + rotation) % SKELETON_MINUTES.size]
-                    RenderBlock("", (minutes * MINUTE_WIDTH_DP * density).toInt(), false, null)
-                }
-            } else if (programs.isNullOrEmpty()) {
-                // No EPG data for this channel - a single filler block keeps the row
-                // clickable and visually aligned with rows that do have data. Repeating
-                // the channel's own name here just reads as duplicated text right next
-                // to the name column, so use a neutral label instead.
-                listOf(RenderBlock(itemView.context.getString(R.string.list_no_programme_info), (FILLER_MINUTES * MINUTE_WIDTH_DP * density).toInt(), false, null))
-            } else {
-                val nowSeconds = System.currentTimeMillis() / 1000
-                programs.map { program ->
-                    val isCurrent = nowSeconds in program.startTimestamp until program.stopTimestamp
+            // One clock read for the whole row, not one per block: every block is judging
+            // itself against the same instant anyway.
+            val nowSeconds = System.currentTimeMillis() / 1000
+            val count = when {
+                pending -> SKELETON_MINUTES.size
+                programs.isNullOrEmpty() -> 1
+                else -> programs!!.size
+            }
+            // Only when something is armed: with nothing set (the usual state) the per-block
+            // key string is 16 concatenations per bind for a lookup that can only miss.
+            val checkReminders = !pending && !programs.isNullOrEmpty() && hasAnyReminder()
+            val rotation = if (pending) (channel.id.hashCode() and 0x7fffffff) % SKELETON_MINUTES.size else 0
+            // Straight from the programme list into the block Views, with no per-bind list of
+            // intermediate block descriptions in between: that list, its 16 objects and the
+            // destructuring per block were most of what a row bind allocated (B9).
+            for (i in 0 until count) {
+                val program: XtreamClient.EpgProgram?
+                val title: String
+                val minutes: Long
+                val isCurrent: Boolean
+                if (pending) {
+                    // Fetch still out: skeleton blocks rather than "No programme info", which
+                    // flashing for 200ms before data lands reads as the guide glitching.
+                    program = null
+                    title = ""
+                    minutes = SKELETON_MINUTES[(i + rotation) % SKELETON_MINUTES.size].toLong()
+                    isCurrent = false
+                } else if (programs.isNullOrEmpty()) {
+                    // No EPG data for this channel - a single filler block keeps the row
+                    // clickable and visually aligned with rows that do have data. Repeating
+                    // the channel's own name here just reads as duplicated text right next
+                    // to the name column, so use a neutral label instead.
+                    program = null
+                    title = itemView.context.getString(R.string.list_no_programme_info)
+                    minutes = FILLER_MINUTES.toLong()
+                    isCurrent = false
+                } else {
+                    program = programs!![i]
+                    title = program.title
+                    isCurrent = nowSeconds in program.startTimestamp until program.stopTimestamp
                     // The currently-airing block is truncated to its remaining time so every
                     // row's timeline starts flush at "now", keeping columns aligned without
                     // needing a separate absolute-position/overlay system.
                     val effectiveStart = if (isCurrent) nowSeconds else program.startTimestamp
-                    val minutes = ((program.stopTimestamp - effectiveStart) / 60).coerceAtLeast(1)
-                    RenderBlock(program.title, (minutes * MINUTE_WIDTH_DP * density).toInt(), isCurrent, program)
+                    minutes = ((program.stopTimestamp - effectiveStart) / 60).coerceAtLeast(1)
                 }
-            }
+                val widthPx = (minutes * MINUTE_WIDTH_DP * density).toInt()
 
-            // Reuse existing block Views where possible instead of tearing every child
-            // down and rebuilding on every rebind - this was the main source of GC
-            // churn/jank scrolling through a large guide.
-            //
-            // One clock read for the whole row, not one per block: every block is judging
-            // itself against the same instant anyway, and this ran inside the loop.
-            val nowSeconds = System.currentTimeMillis() / 1000
-            for (i in blocks.indices) {
-                val (title, widthPx, isCurrent, program) = blocks[i]
+                // Reuse existing block Views where possible instead of tearing every child
+                // down and rebuilding on every rebind - this was the main source of GC
+                // churn/jank scrolling through a large guide.
                 val block = programRow.getChildAt(i) as? TextView ?: makeBlock().also { programRow.addView(it) }
                 // Same leftover-transform defense as channelInfo above - these blocks are
-                // reused across binds too (see the comment below), so a stuck transform from
-                // a previous focus state would otherwise persist onto whatever program now
-                // occupies this recycled block.
+                // reused across binds too, so a stuck transform from a previous focus state
+                // would otherwise persist onto whatever program now occupies this block.
                 block.scaleX = 1f
                 block.scaleY = 1f
                 block.translationX = 0f
@@ -383,7 +400,8 @@ class LiveGuideAdapter(
                 block.text = title
                 val state = block.tag as BlockState
                 state.program = program
-                val reminderSet = program != null && program.startTimestamp > nowSeconds && isReminderSet("${channel.id}:${program.startTimestamp}")
+                val reminderSet = checkReminders && program != null && program.startTimestamp > nowSeconds &&
+                    isReminderSet("${channel.id}:${program.startTimestamp}")
                 val backgroundRes = when {
                     pending -> R.drawable.bg_guide_block_skeleton
                     reminderSet -> R.drawable.bg_guide_block_reminder
@@ -397,11 +415,15 @@ class LiveGuideAdapter(
                     state.backgroundRes = backgroundRes
                     block.setBackgroundResource(backgroundRes)
                 }
+                // Same idea for the width: setLayoutParams always requests a layout, and
+                // rows scrolled back into view mostly get the widths they already have.
                 val lp = block.layoutParams as LinearLayout.LayoutParams
-                lp.width = widthPx
-                block.layoutParams = lp
+                if (lp.width != widthPx) {
+                    lp.width = widthPx
+                    block.layoutParams = lp
+                }
             }
-            while (programRow.childCount > blocks.size) {
+            while (programRow.childCount > count) {
                 programRow.removeViewAt(programRow.childCount - 1)
             }
             // Store and render the now/next line from the same data that built the blocks,

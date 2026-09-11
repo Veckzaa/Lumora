@@ -24,6 +24,7 @@ BENCHES=(
   EpgStoreBench#replace50kRows
   GroupingBench#liveGrouping30k
   GroupingBench#vodGrouping20k
+  GuideBench#scroll400Rows
 )
 
 cd "$(dirname "$0")/../.."
@@ -91,10 +92,16 @@ for run in $(seq "$STARTS"); do
 done
 
 echo "== Scroll jank"
+# Launch leaves focus on the category sidebar, where the presses scrolled the categories rather
+# than the guide: step into the guide first. The presses loop inside one device shell: one
+# `adb shell input` per press spawns a process each and paces them far apart, while passing all
+# of them to a single `input` call fires them faster than the list lays out the next row, and
+# the D-pad drops most of them.
+$ADB shell input keyevent KEYCODE_DPAD_RIGHT
+$ADB shell sleep 2
 $ADB shell dumpsys gfxinfo "$PKG" reset >/dev/null
-for key in $(for _ in $(seq 30); do echo KEYCODE_DPAD_DOWN; done) $(for _ in $(seq 30); do echo KEYCODE_DPAD_UP; done); do
-  $ADB shell input keyevent "$key"
-done
+$ADB shell 'for i in $(seq 40); do input keyevent KEYCODE_DPAD_DOWN; done; for i in $(seq 40); do input keyevent KEYCODE_DPAD_UP; done'
+$ADB shell sleep 1
 $ADB shell dumpsys gfxinfo "$PKG" | tr -d '\r' | grep -E 'Total frames rendered|Janky frames|(50|90|95|99)th percentile' | sed 's/^ *//' > "$OUT/jank.txt"
 
 # ── Summary ───────────────────────────────────────────
@@ -134,7 +141,7 @@ dirty=$(git diff --quiet HEAD -- app || echo " + uncommitted changes in app/")
   echo "|---|---|---|---|---|---|"
   echo "| $(col 2) | $(col 3) | $(col 4) | $(col 5) | $(col 6) | $(col 7) |"
   echo
-  echo "## M5 scroll (60 D-pad presses)"
+  echo "## M5 guide scroll (40 D-pad presses down, 40 up)"
   echo
   sed 's/^/- /' "$OUT/jank.txt"
   echo

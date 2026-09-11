@@ -11,6 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.SimpleItemAnimator
 import androidx.recyclerview.widget.RecyclerView
 import com.lumora.adapter.DYNAMIC_BUCKET_ID_PREFIX
 import com.lumora.adapter.EpisodeAdapter
@@ -370,6 +371,9 @@ internal fun MainActivity.buildGuideHeader() {
 
 internal fun MainActivity.setupChannelList() {
     binding.liveContent.layoutManager = LinearLayoutManager(this)
+    // A changed row is rebound in place. The default change animation binds a second view
+    // holder and cross-fades to it, and D-pad focus stays on the one that gets removed.
+    (binding.liveContent.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
     binding.liveGuideColumn.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> sizeLiveBand() }
     // Same as the second OK on a channel: the previewed channel goes fullscreen.
     binding.livePreviewPane.setOnClickListener { previewTargetChannel?.let { playItem(it) } }

@@ -926,6 +926,7 @@ class MainActivity : AppCompatActivity() {
         isChannelFavourite = { id -> FavoritesStore.getFavoriteChannelIds(this).contains(id) },
         onProgramLongPress = { channel, program -> toggleProgramReminder(channel, program) },
         isReminderSet = { key -> ReminderStore.get(this, key) != null },
+        hasAnyReminder = { !ReminderStore.isEmpty(this) },
         fetchPrograms = { channelId -> resolveEpgPrograms(channelId) }
     )
     internal val seriesShelfAdapter = ShelfAdapter(
