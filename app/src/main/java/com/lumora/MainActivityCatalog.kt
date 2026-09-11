@@ -207,8 +207,10 @@ internal fun MainActivity.classifyAndShowLiveFirst() {
             // The per-pass lines above only account for their own work, and miss process
             // creation, Application.onCreate, layout inflation and the first frame.
             perf("FIRST CONTENT", BaseApplication.instance.processStartedAt)
+            firstContent.complete(Unit)
         } else {
             showEmptyState()
+            firstContent.complete(Unit)
         }
     }
 }

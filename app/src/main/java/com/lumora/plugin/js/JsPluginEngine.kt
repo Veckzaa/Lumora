@@ -293,6 +293,7 @@ class JsPluginEngine(
                 suspendCancellableCoroutine { cont ->
                     executor.execute {
                         val outcome: ScriptOutcome = try {
+                            ensureQuickJsLoaded()
                             val context = QuickJSContext.create()
                             try {
                                 host.install(context)
@@ -392,6 +393,21 @@ class JsPluginEngine(
 
     companion object {
         private const val TAG = "PluginEngine"
+
+        /** Loads the QuickJS native library once, right before the first context. Every
+         *  QuickJSContext.create() throws until it has run. It used to run in
+         *  Application.onCreate on every launch, plugins or not (perf plan S3). */
+        private val quickJsLoaded by lazy {
+            try {
+                com.whl.quickjs.android.QuickJSLoader.init()
+            } catch (e: UnsatisfiedLinkError) {
+                // JVM unit tests System.load a desktop build instead; on a device the
+                // QuickJSContext.create() that follows reports the failure itself.
+                android.util.Log.w(TAG, "QuickJS library load failed: ${e.message}")
+            }
+            true
+        }
+        fun ensureQuickJsLoaded() { quickJsLoaded }
         private const val MANIFEST_PROBE_TIMEOUT_MS = 5_000L
         /** Cap on sideloaded tracks, same idea as the report caps in [JsPluginContract]. */
         private const val MAX_SUBTITLES = 20

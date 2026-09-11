@@ -337,7 +337,46 @@ internal const val ZOOM_MAX = 3.0f
 class MainActivity : AppCompatActivity() {
 
     internal lateinit var binding: ActivityMainBinding
-    internal lateinit var playerManager: PlayerManager
+    /**
+     * The player, created on first use rather than in onCreate (perf plan S3). Building an
+     * ExoPlayer - renderers, the FFmpeg audio decoder, audio focus - ran on the main thread
+     * before the first frame of every launch, for something nothing needs until the first
+     * preview or playback. The player controls are wired in the same step, since they are
+     * what touches the player before playback (speed controller, sleep timer, A/V offset).
+     * Main thread only, like every other access to the player.
+     */
+    internal val playerManager: PlayerManager
+        get() = playerManagerOrNull ?: createPlayer()
+    private var playerManagerOrNull: PlayerManager? = null
+
+    private fun createPlayer(): PlayerManager {
+        check(android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) { "player created off the main thread" }
+        val manager = PlayerManager(this)
+        // Published before the wiring below so setupPlayerControls() reads this instance
+        // instead of recursing into another createPlayer().
+        playerManagerOrNull = manager
+        playerDiagnostics = PlayerDiagnostics(manager.getExoPlayer())
+        manager.getExoPlayer().addAnalyticsListener(playerDiagnostics.getAnalyticsListener())
+        // Dropped frames are only reported through the analytics path - Player.Listener never
+        // sees them - and they're the one signal that says "this copy plays, but badly".
+        manager.getExoPlayer().addAnalyticsListener(object : AnalyticsListener {
+            override fun onDroppedVideoFrames(
+                eventTime: AnalyticsListener.EventTime,
+                droppedFrames: Int,
+                elapsedMs: Long
+            ) = onVideoFramesDropped(droppedFrames)
+        })
+        setupPlayerControls()
+        return manager
+    }
+
+    /**
+     * Completed once the first screen of content is up, or 5 s after onCreate when nothing
+     * ever paints (no provider, a failed load) - whichever comes first. Startup work that the
+     * first screen doesn't need waits on it, so it stops competing with the catalogue load for
+     * the two cores of a stick.
+     */
+    internal val firstContent = kotlinx.coroutines.CompletableDeferred<Unit>()
     internal lateinit var castManager: com.lumora.player.CastManager
     /** `::castManager.isInitialized` reads the backing field, which only the declaring class
      *  can do - sibling files (MainActivityPlayer) go through this instead. */
@@ -391,8 +430,14 @@ class MainActivity : AppCompatActivity() {
 
     internal lateinit var playerDiagnostics: PlayerDiagnostics
     internal lateinit var database: LumoraDatabase
-    internal lateinit var speedController: com.lumora.player.playback.PlaybackSpeedController
-    internal lateinit var sleepTimer: com.lumora.player.playback.SleepTimer
+    // Both are wired by setupPlayerControls(), which runs when the player is first created;
+    // reading either creates the player first, so no path can reach them uninitialised.
+    internal val speedController: com.lumora.player.playback.PlaybackSpeedController
+        get() { playerManager; return speedControllerBacking }
+    internal lateinit var speedControllerBacking: com.lumora.player.playback.PlaybackSpeedController
+    internal val sleepTimer: com.lumora.player.playback.SleepTimer
+        get() { playerManager; return sleepTimerBacking }
+    internal lateinit var sleepTimerBacking: com.lumora.player.playback.SleepTimer
     internal val trackController = PlayerTrackController()
     internal val qrManager by lazy { QrPairingManager(this) }
     internal var activeSettingsOverlay: FullScreenOverlay? = null
@@ -1054,7 +1099,14 @@ class MainActivity : AppCompatActivity() {
         // which reads this discovery's cached result - awaited here so a plugin-only setup
         // (no traditional provider) isn't wrongly bounced to "Add a Provider" on cold start
         // because that check ran against the still-empty pre-discovery cache.
+        //
+        // With a provider configured the gate passes regardless, so discovery waits for the
+        // first screen instead (see runAfterFirstContent): the JS engine's native library
+        // load and its manifest scan were competing with the catalogue load for the two
+        // cores of a stick.
+        val providerConfigured = hasProviderConfigured()
         val pluginDiscoveryOnStart = scope.launch {
+            if (providerConfigured) withTimeoutOrNull(5_000) { firstContent.await() }
             pluginScriptManager.discoverScripts()
             // Opt-in only (Settings > Plugins). Ahead of loadScraperSiteManifest() so a
             // scraper_sites update fetched here is the one that gets applied below, not one
@@ -1064,31 +1116,10 @@ class MainActivity : AppCompatActivity() {
             // supersedes the bundled site list BaseApplication already applied.
             loadScraperSiteManifest()
         }
-        playerManager = PlayerManager(this)
-        playerDiagnostics = PlayerDiagnostics(playerManager.getExoPlayer())
-        playerManager.getExoPlayer().addAnalyticsListener(playerDiagnostics.getAnalyticsListener())
-        // Dropped frames are only reported through the analytics path - Player.Listener never
-        // sees them - and they're the one signal that says "this copy plays, but badly".
-        playerManager.getExoPlayer().addAnalyticsListener(object : AnalyticsListener {
-            override fun onDroppedVideoFrames(
-                eventTime: AnalyticsListener.EventTime,
-                droppedFrames: Int,
-                elapsedMs: Long
-            ) = onVideoFramesDropped(droppedFrames)
-        })
         database = LumoraDatabase.getInstance(this)
-
-        // Periodic XMLTV EPG re-download. Nothing scheduled this before — the call here went to
-        // a BackgroundWorkEnabler.initialize() that was an empty stub whose comment claimed
-        // BaseApplication did the scheduling, which it didn't — so EpgSyncWorker never ran and
-        // XMLTV sources were fetched exactly never. Unique periodic work with an UPDATE policy,
-        // so re-asserting it on every start is free; WorkManager keeps the timer across process
-        // death.
-        EpgSyncWorker.schedulePeriodic(this)
 
         setupChannelList()
         setupTabs()
-        setupPlayerControls()
         setupToolbar()
         loadDeadStreams()
         // Shown immediately rather than waiting for loadSavedProvider(): that call sits behind
@@ -1112,18 +1143,12 @@ class MainActivity : AppCompatActivity() {
             // A configured provider means the gate passes regardless of discovery, so the
             // cache can render immediately. Plugin-only setups must wait for discovery's
             // result or the gate would wrongly bounce them to "Add a Provider".
-            if (hasProviderConfigured()) loadSavedProvider()
+            if (providerConfigured) loadSavedProvider()
             else { pluginDiscoveryOnStart.join(); loadSavedProvider() }
         }
         requestNotificationPermissionIfNeeded()
         showCarDisclaimerIfProjected()
-        pruneStoredEpg()
-        checkAndPromptUpdate()
-        // Reconcile with Trakt once a launch. Rate-limited inside to six hours, and a no-op
-        // unless the account is connected with watched sync on, so this is a prefs read in
-        // every other case. Writes only to WatchedStore, which is keyed by title rather than
-        // by catalogue id - it does not need the catalogue to have loaded.
-        pullTraktWatched()
+        runAfterFirstContent()
 
         // Downloads are a mobile-only affordance - a TV box has nowhere meaningful to
         // browse a downloaded file, and it's not what "download for offline" means there.
@@ -1146,6 +1171,32 @@ class MainActivity : AppCompatActivity() {
         }
 
         onBackPressedDispatcher.addCallback(this, backCallback)
+    }
+
+    /**
+     * Startup work the first screen doesn't need, run once it is up (perf plan S3). Each of
+     * these used to run from onCreate: WorkManager's first getInstance opens its own database
+     * on the main thread, the EPG prune and the Trakt pull are database and network work, and
+     * the update check is a network call - all of it before the first frame.
+     */
+    private fun runAfterFirstContent() {
+        scope.launch {
+            withTimeoutOrNull(5_000) { firstContent.await() }
+            // Periodic XMLTV EPG re-download. Nothing scheduled this before — the call here went to
+            // a BackgroundWorkEnabler.initialize() that was an empty stub whose comment claimed
+            // BaseApplication did the scheduling, which it didn't — so EpgSyncWorker never ran and
+            // XMLTV sources were fetched exactly never. Unique periodic work with an UPDATE policy,
+            // so re-asserting it on every start is free; WorkManager keeps the timer across process
+            // death.
+            EpgSyncWorker.schedulePeriodic(this@MainActivity)
+            pruneStoredEpg()
+            checkAndPromptUpdate()
+            // Reconcile with Trakt once a launch. Rate-limited inside to six hours, and a no-op
+            // unless the account is connected with watched sync on, so this is a prefs read in
+            // every other case. Writes only to WatchedStore, which is keyed by title rather than
+            // by catalogue id - it does not need the catalogue to have loaded.
+            pullTraktWatched()
+        }
     }
 
     /**
@@ -1506,8 +1557,7 @@ class MainActivity : AppCompatActivity() {
         scope.cancel()
         mainHandler.removeCallbacksAndMessages(null)
         qrManager.stop()
-        playerManager.release()
-        if (::sleepTimer.isInitialized) sleepTimer.stop()
+        playerManagerOrNull?.let { it.release(); sleepTimerBacking.stop() }
         if (::castManager.isInitialized) castManager.release()
         activeTorrentSession?.let { engine -> Thread { runCatching { engine.stop() } }.start() }
         activeTorrentSession = null

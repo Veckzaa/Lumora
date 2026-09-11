@@ -143,7 +143,7 @@ internal fun MainActivity.setupPlayerControls() {
     binding.btnAspectRatio.setOnClickListener { cycleAspectMode() }
 
     // Speed control
-    speedController = com.lumora.player.playback.PlaybackSpeedController(playerManager.getExoPlayer())
+    speedControllerBacking = com.lumora.player.playback.PlaybackSpeedController(playerManager.getExoPlayer())
     binding.btnSpeed.setOnClickListener {
         val speeds = arrayOf(
             getString(R.string.play_speed_0_5),
@@ -199,7 +199,7 @@ internal fun MainActivity.setupPlayerControls() {
     }
 
     // Sleep timer
-    sleepTimer = com.lumora.player.playback.SleepTimer(playerManager.getExoPlayer()).apply {
+    sleepTimerBacking = com.lumora.player.playback.SleepTimer(playerManager.getExoPlayer()).apply {
         onTickCallback = { display -> binding.btnSleepTimer.text = display }
         // The timer's own onFinish stops the player, which leaves a frozen frame behind with
         // no sign playback ended - surface the controls and say so, and reset the button label

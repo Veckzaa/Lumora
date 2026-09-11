@@ -42,9 +42,9 @@ class BaseApplication : Application() {
         // here ran on every launch before the first frame: a full Cast setup where Play Services
         // exist, and on Fire TV (no Play Services) a probe that threw and was swallowed (perf plan S2).
 
-        // Loads the native QuickJS .so; every QuickJSContext.create() call throws until this
-        // has run once (see com.lumora.plugin.js.JsPluginEngine).
-        com.whl.quickjs.android.QuickJSLoader.init()
+        // The QuickJS native library is no longer loaded here: JsPluginEngine loads it before
+        // its first context (perf plan S3), so a launch that never runs a plugin never pays
+        // for the dlopen.
 
         // Application context for the ported site-scraper stack (com.lumora.scraper) - its
         // network layer reads a bundled root certificate out of raw resources and shares the
@@ -54,10 +54,14 @@ class BaseApplication : Application() {
         // Whether this phone is projecting to a car right now. Android Auto suppresses
         // permission dialogs while projecting, so MainActivity reads this before asking for
         // anything - see requestNotificationPermissionIfNeeded.
-        try {
-            CarConnection(this).type.observeForever { carConnectionType = it }
-        } catch (_: Throwable) {
-            // No Android Auto on this device (a TV box, typically); -1 stays, meaning "not projecting".
+        // Not on a TV: there is no Android Auto to observe, and the probe's failure was
+        // being paid for and swallowed on every Fire TV launch (perf plan S3).
+        if (!packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)) {
+            try {
+                CarConnection(this).type.observeForever { carConnectionType = it }
+            } catch (_: Throwable) {
+                // No Android Auto on this device; -1 stays, meaning "not projecting".
+            }
         }
 
         okHttpClient = OkHttpClient.Builder()
