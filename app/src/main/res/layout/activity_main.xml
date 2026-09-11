@@ -1219,16 +1219,19 @@
                             </HorizontalScrollView>
                         </LinearLayout>
 
-                        <!-- Clips its rows (clipChildren left at true): unclipped, a row scrolled
-                             past the top kept drawing over the time ruler. The focused channel
-                             card's 1.06x scale-up still has room, because the side margin is this
-                             list's own padding (drawn into, clipToPadding false) rather than the
-                             column's, and the 4dp top gap is padding rather than margin. -->
+                        <!-- clipChildren false: a parent's clipChildren clips each child to the
+                             child's own bounds, and the focused channel card scales to 1.06x past
+                             its row's - clipped, the card lost its left edge. The card draws into
+                             this list's own padding (clipToPadding false), which is why the side
+                             margin is padding here rather than the column's. Rows scrolled past
+                             the top still can't reach the time ruler: the column clips this list
+                             to its bounds, the ruler sits above it. -->
                         <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/liveContent"
                             android:layout_width="match_parent"
                             android:layout_height="0dp"
                             android:layout_weight="1"
+                            android:clipChildren="false"
                             android:clipToPadding="false"
                             android:defaultFocusHighlightEnabled="true"
                             android:paddingHorizontal="16dp"
