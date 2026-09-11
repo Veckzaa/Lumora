@@ -387,7 +387,10 @@ internal fun MainActivity.perf(stage: String, startedAt: Long, detail: String = 
 
 internal fun MainActivity.deriveFilmsSeriesHalf(list: List<Channel>): MainActivity.FilmsSeriesContent {
     val startedAt = System.currentTimeMillis()
-    val hideNonEnglish = prefs.getBoolean(PREF_HIDE_NON_ENGLISH, true)
+    // Off unless asked for: on by default it emptied the French film and series categories
+    // of a French provider (their titles carry a "[FR]" tag) for anyone who never found the
+    // toggle.
+    val hideNonEnglish = prefs.getBoolean(PREF_HIDE_NON_ENGLISH, false)
     val hideAdult = prefs.getBoolean(PREF_HIDE_ADULT, true)
     val groupChannels = prefs.getBoolean(PREF_GROUP_CHANNELS, true)
     val categorizeVod = prefs.getBoolean(PREF_CATEGORIZE_VOD, true)

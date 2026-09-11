@@ -1304,7 +1304,7 @@ internal fun MainActivity.showProviderSettings() {
         subscriptionStatus.visibility = View.VISIBLE
     }
 
-    hideNonEnglish.isChecked = prefs.getBoolean(PREF_HIDE_NON_ENGLISH, true)
+    hideNonEnglish.isChecked = prefs.getBoolean(PREF_HIDE_NON_ENGLISH, false)
     hideNonEnglish.setOnCheckedChangeListener { _, checked ->
         prefs.edit().putBoolean(PREF_HIDE_NON_ENGLISH, checked).apply()
         if (allChannels.isNotEmpty()) scope.launch { classifyAndShow() }
