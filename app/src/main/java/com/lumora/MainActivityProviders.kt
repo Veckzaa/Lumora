@@ -366,23 +366,19 @@ internal suspend fun MainActivity.persistCatalog(channels: List<Channel>) = with
         ChannelCache.save(this@persistCatalog, channels)
         return@withContext
     }
-    val old = ChannelCache.load(this@persistCatalog)
-    if (old.isNullOrEmpty()) {
-        ChannelCache.save(this@persistCatalog, channels)
-        return@withContext
-    }
     val known = channels.map { it.id }.toSet()
     // Keep cached items whose type is currently gated OFF for their still-configured
     // owner, so re-enabling the type restores them without a network re-fetch. Items of
-    // dropped/removed providers and of types that are ON do not resurrect.
-    val resurrect = old.filter { ch ->
-        if (ch.id in known) return@filter false
+    // dropped/removed providers and of types that are ON do not resurrect. Filtered while
+    // the cache is read: the old catalogue used to sit in memory whole next to the new one.
+    val resurrect = ChannelCache.load(this@persistCatalog) { ch ->
+        if (ch.id in known) return@load false
         val ownerConfigured =
             if (ch.isOwnLibrary) mediaServerOwner(ch, servers) != null
             else ch.sourceProviderId != null && ch.sourceProviderId in configuredIds
-        if (!ownerConfigured) return@filter false
+        if (!ownerConfigured) return@load false
         !isTypeAllowed(ch, configs, servers)
-    }
+    }.orEmpty()
     ChannelCache.save(this@persistCatalog, channels + resurrect)
 }
 

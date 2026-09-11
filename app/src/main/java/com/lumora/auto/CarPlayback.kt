@@ -44,11 +44,12 @@ class CarPlayback(private val context: Context) {
      */
     @Synchronized
     fun loadCatalog(): List<Channel> {
-        val cached = ChannelCache.load(context).orEmpty()
-        channels = cached.filter {
+        // Filtered as the cache is read, so the films and series (most of the catalogue)
+        // are never held in memory by the car service.
+        channels = ChannelCache.load(context) {
             it.mediaType == MediaType.LIVE && it.url.isNotBlank() &&
                 it.stalkerCmd.isNullOrBlank() && it.pluginToken.isNullOrBlank()
-        }
+        }.orEmpty()
         return channels
     }
 

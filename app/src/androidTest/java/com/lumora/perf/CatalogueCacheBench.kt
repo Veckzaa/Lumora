@@ -19,5 +19,9 @@ class CatalogueCacheBench {
         Bench.run("B1 cache load 50k", prepare = { }) {
             check(ChannelCache.load(context)?.size == Fixtures.CATALOGUE)
         }
+        // B10: what EpgSyncWorker needs from the cache every 6 h - tvg-id -> channel ids.
+        Bench.run("B10 tvg-id mapping 50k", prepare = { }) {
+            check(ChannelCache.loadTvgIdMapping(context).size > 1000)
+        }
     }
 }

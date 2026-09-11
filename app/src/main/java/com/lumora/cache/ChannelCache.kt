@@ -117,12 +117,19 @@ object ChannelCache {
     var lastLoadWasLegacyFormat: Boolean = false
         private set
 
-    fun load(context: Context): List<Channel>? {
+    /**
+     * [keep] filters while reading: a rejected channel is dropped as soon as its line is
+     * parsed, so callers that want a subset (the car service wants live channels only, the
+     * gated-VOD merge in persistCatalog wants a few hundred) never hold the whole catalogue -
+     * on a 1 GB stick that is the difference between a background read and a low-memory
+     * kill while something is playing (perf plan C2).
+     */
+    fun load(context: Context, keep: ((Channel) -> Boolean)? = null): List<Channel>? {
         val file = File(context.filesDir, CACHE_FILE)
         if (!file.exists()) return null
         val startedAt = System.currentTimeMillis()
         return try {
-            val (result, sawLegacyLine) = file.bufferedReader().use { read(it) }
+            val (result, sawLegacyLine) = file.bufferedReader().use { read(it, keep) }
             // Cold-start budget line: this parse and the derive passes that follow it are
             // what "instant cached start" is spent on - keep them measurable on-device
             // (adb logcat -s LumoraPerf) rather than guessed at.
@@ -151,8 +158,8 @@ object ChannelCache {
      * provider id) go through a per-load pool, so thousands of channels share a few hundred
      * strings instead of each keeping its own copy for as long as the catalogue is in memory.
      */
-    internal fun read(reader: BufferedReader): Pair<List<Channel>, Boolean> {
-        val result = ArrayList<Channel>(50_000)
+    internal fun read(reader: BufferedReader, keep: ((Channel) -> Boolean)? = null): Pair<List<Channel>, Boolean> {
+        val result = ArrayList<Channel>(if (keep == null) 50_000 else 1_000)
         val f = LineFields()
         var sawLegacyLine = false
         while (true) {
@@ -162,8 +169,7 @@ object ChannelCache {
             if (count < FIELD_COUNT_MIN) continue
             if (count < FIELD_COUNT) sawLegacyLine = true
             val url = f.text(2) ?: ""
-            result.add(
-                Channel(
+            val channel = Channel(
                     // Falls back to the url, matching what M3uParser now assigns.
                     // Caches written before that fix hold a blank id for every M3U
                     // channel, and this file is read on cold start before any
@@ -200,10 +206,45 @@ object ChannelCache {
                     tmdbId = f.text(24),
                     trailerKey = f.text(25),
                     isPlex = f.flag(26)
-                )
             )
+            if (keep == null || keep(channel)) result.add(channel)
         }
         return result to sawLegacyLine
+    }
+
+    /**
+     * tvg-id -> ids of the channels carrying it, straight from the cache file.
+     *
+     * The EPG sync worker only needs this to map a feed's programmes onto app channels, and it
+     * used to get it by [load]ing the whole catalogue - 50k `Channel` objects with all 27
+     * fields, built in the background every 6 h on a 1 GB device, possibly while something is
+     * playing. This reads the three fields involved (id, its url fallback, tvg-id) and
+     * nothing else (perf plan C2).
+     */
+    fun loadTvgIdMapping(context: Context): Map<String, Set<String>> {
+        val file = File(context.filesDir, CACHE_FILE)
+        if (!file.exists()) return emptyMap()
+        return try {
+            file.bufferedReader().use { readTvgIdMapping(it) }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to read tvg-ids from cache: ${e.message}")
+            emptyMap()
+        }
+    }
+
+    internal fun readTvgIdMapping(reader: BufferedReader): Map<String, Set<String>> {
+        val map = HashMap<String, MutableSet<String>>()
+        val f = LineFields()
+        while (true) {
+            val line = reader.readLine() ?: break
+            if (line.isBlank()) continue
+            if (f.scan(line) < FIELD_COUNT_MIN) continue
+            val tvgId = f.text(7)?.takeIf { it.isNotBlank() } ?: continue
+            // Same id fallback as read(): a blank id means the url.
+            val id = f.text(0) ?: f.text(2) ?: ""
+            map.getOrPut(tvgId) { mutableSetOf() }.add(id)
+        }
+        return map
     }
 
     fun clear(context: Context) {

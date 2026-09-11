@@ -72,4 +72,24 @@ class ChannelCacheFormatTest {
         assertSame(channels[0].group, channels[1].categoryName)
         assertSame(channels[0].year, channels[1].year)
     }
+
+    @Test
+    fun `tvg-id mapping matches a full parse, and a filtered load keeps only what passes`() {
+        val text = write(
+            Channel(id = "a", name = "A", url = "http://a", tvgId = "one.tv"),
+            Channel(id = "", name = "B", url = "http://b", tvgId = "one.tv"),
+            Channel(id = "c", name = "C", url = "http://c", tvgId = " "),
+            Channel(id = "d", name = "D", url = "http://d", tvgId = "two.tv", mediaType = MediaType.MOVIE),
+            Channel(id = "e", name = "E", url = "http://e")
+        )
+        val expected = HashMap<String, MutableSet<String>>()
+        for (ch in read(text).first) {
+            ch.tvgId?.takeIf { it.isNotBlank() }?.let { expected.getOrPut(it) { mutableSetOf() }.add(ch.id) }
+        }
+        assertEquals(mapOf("one.tv" to setOf("a", "http://b"), "two.tv" to setOf("d")), expected)
+        assertEquals(expected, ChannelCache.readTvgIdMapping(text.reader().buffered()))
+
+        val live = ChannelCache.read(text.reader().buffered()) { it.mediaType == MediaType.LIVE }.first
+        assertEquals(listOf("a", "http://b", "c", "e"), live.map { it.id })
+    }
 }

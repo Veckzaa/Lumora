@@ -170,15 +170,7 @@ class EpgSyncWorker(
      *  every install, the mapping matched nothing, and every single programme was dropped as
      *  "no matching app channel". The cache is the merged catalogue the UI actually browses,
      *  so it is the one carrying the ids the guide reads by. */
-    private fun buildTvgIdMapping(): Map<String, Set<String>> {
-        val map = HashMap<String, MutableSet<String>>()
-        for (channel in ChannelCache.load(applicationContext).orEmpty()) {
-            channel.tvgId?.takeIf { it.isNotBlank() }?.let { tvgId ->
-                map.getOrPut(tvgId) { mutableSetOf() }.add(channel.id)
-            }
-        }
-        return map
-    }
+    private fun buildTvgIdMapping(): Map<String, Set<String>> = ChannelCache.loadTvgIdMapping(applicationContext)
 
     companion object {
         private const val UNIQUE_WORK_NAME = "epg_sync"
