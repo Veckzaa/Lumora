@@ -1106,7 +1106,10 @@ class MainActivity : AppCompatActivity() {
         // cores of a stick.
         val providerConfigured = hasProviderConfigured()
         val pluginDiscoveryOnStart = scope.launch {
-            if (providerConfigured) withTimeoutOrNull(5_000) { firstContent.await() }
+            if (providerConfigured) {
+                withTimeoutOrNull(5_000) { firstContent.await() }
+                delay(1_000 + STARTUP_IDLE_MS)
+            }
             pluginScriptManager.discoverScripts()
             // Opt-in only (Settings > Plugins). Ahead of loadScraperSiteManifest() so a
             // scraper_sites update fetched here is the one that gets applied below, not one
@@ -1179,9 +1182,23 @@ class MainActivity : AppCompatActivity() {
      * on the main thread, the EPG prune and the Trakt pull are database and network work, and
      * the update check is a network call - all of it before the first frame.
      */
+    /** How long after first content the non-urgent startup work waits, so it doesn't share the
+     *  CPU with the user's first presses (see runAfterFirstContent). */
+    private val STARTUP_IDLE_MS = 4_000L
+
     private fun runAfterFirstContent() {
         scope.launch {
             withTimeoutOrNull(5_000) { firstContent.await() }
+            // The player first, and soon: the first preview wants it about half a second
+            // after focus lands on a channel, and building it then put a visible hitch on
+            // the user's first D-pad press. A second after first content is normally before
+            // that, and still after the first frame.
+            delay(1_000)
+            playerManager
+            // The rest waits out the moment the user starts navigating. Fired right at first
+            // content, WorkManager's database open, the EPG prune and plugin discovery landed
+            // on a stick's two cores exactly when the D-pad did, and presses got dropped.
+            delay(STARTUP_IDLE_MS)
             // Periodic XMLTV EPG re-download. Nothing scheduled this before — the call here went to
             // a BackgroundWorkEnabler.initialize() that was an empty stub whose comment claimed
             // BaseApplication did the scheduling, which it didn't — so EpgSyncWorker never ran and

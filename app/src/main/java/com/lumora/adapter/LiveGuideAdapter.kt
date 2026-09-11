@@ -165,6 +165,10 @@ class LiveGuideAdapter(
         // channel name - never re-fetched. Cleared on every bind so a recycled row can't
         // carry a previous channel's schedule into its now line.
         private var lastPrograms: List<XtreamClient.EpgProgram>? = null
+        // The channel whose logo fetch has finished, hit or miss. A miss (dead logo URL)
+        // leaves the initial showing, and reloadIfCancelled must not read that as "still
+        // loading" and rebind the row every time it scrolls back on screen.
+        private var logoSettledFor: Channel? = null
 
         init {
             initialText.background = initialBackground
@@ -211,7 +215,8 @@ class LiveGuideAdapter(
             val channel = current ?: return
             if (loadJob?.isActive == true || logoJob?.isActive == true) return
             val epgMissing = channel.id.isNotBlank() && !EpgListCache.has(channel.id)
-            val logoMissing = !channel.logoUrl.isNullOrBlank() && logoImage.visibility != View.VISIBLE
+            val logoMissing = !channel.logoUrl.isNullOrBlank() && logoImage.visibility != View.VISIBLE &&
+                logoSettledFor !== channel
             if (epgMissing || logoMissing) bind(channel)
         }
 
@@ -308,10 +313,13 @@ class LiveGuideAdapter(
                 logoJob = scope.launch {
                     delay(LOAD_DEBOUNCE_MS)
                     val bitmap = PosterLoader.fetch(logoUrl)
-                    if (bitmap != null && current === channel) {
-                        logoImage.setImageBitmap(bitmap)
-                        logoImage.visibility = View.VISIBLE
-                        initialText.visibility = View.GONE
+                    if (current === channel) {
+                        logoSettledFor = channel
+                        if (bitmap != null) {
+                            logoImage.setImageBitmap(bitmap)
+                            logoImage.visibility = View.VISIBLE
+                            initialText.visibility = View.GONE
+                        }
                     }
                 }
             }
