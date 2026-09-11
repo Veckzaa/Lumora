@@ -15,6 +15,7 @@ import com.lumora.data.MediaServerStore
 import com.lumora.anime.AnimeCatalogClient
 import com.lumora.parser.M3uParser
 import com.lumora.parser.XtreamClient
+import com.lumora.parser.liveContainerFor
 import com.lumora.util.normalizeServerUrl
 import com.lumora.data.remote.stalker.StalkerProvider
 import com.lumora.plugin.js.JsPluginContract
@@ -786,7 +787,8 @@ internal suspend fun MainActivity.fetchXtreamChannels(config: IptvProviderConfig
             val liveCatsDeferred: Deferred<List<Pair<String, String>>>? = if (liveOff) null else async { runCatching { client.getLiveCategories(xtreamProvider) }.getOrDefault(emptyList()) }
             val vodCatsDeferred: Deferred<List<Pair<String, String>>>? = if (moviesOff) null else async { runCatching { client.getVodCategories(xtreamProvider) }.getOrDefault(emptyList()) }
             val seriesCatsDeferred: Deferred<List<Pair<String, String>>>? = if (seriesOff) null else async { runCatching { client.getSeriesCategories(xtreamProvider) }.getOrDefault(emptyList()) }
-            val liveDeferred: Deferred<List<Channel>>? = if (liveOff) null else async { client.getLiveStreams(xtreamProvider) }
+            val liveContainer = liveContainerFor(auth.allowedOutputFormats)
+            val liveDeferred: Deferred<List<Channel>>? = if (liveOff) null else async { client.getLiveStreams(xtreamProvider, liveContainer) }
             val filmsDeferred: Deferred<List<Channel>>? = if (moviesOff) null else async { client.getVodStreams(xtreamProvider) }
             val seriesDeferred: Deferred<List<Channel>>? = if (seriesOff) null else async { client.getSeries(xtreamProvider) }
 

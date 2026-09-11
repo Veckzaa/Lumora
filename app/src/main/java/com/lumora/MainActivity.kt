@@ -172,6 +172,9 @@ internal const val PREF_GROUP_CHANNELS = "group_channels"
 // When the catalog was last fetched from the network; the cache serves every launch until
 // this is CATALOG_TTL_MS old (a provider change force-refreshes regardless).
 internal const val PREF_CATALOG_REFRESHED_AT = "catalog_refreshed_at"
+/** Set once the catalogue has been marked stale after the Xtream live-container fix (4.5.2):
+ *  caches written before it hold .m3u8 live URLs that 405 on panels without HLS output. */
+internal const val PREF_LIVE_CONTAINER_REFETCHED = "live_container_refetched"
 internal const val CATALOG_TTL_MS = 24 * 60 * 60 * 1000L
 // How long a channel's stored guide is served without re-checking the provider. Short EPG
 // covers the next few hours, so a few hours of reuse is the useful window - long enough that
@@ -1025,6 +1028,12 @@ class MainActivity : AppCompatActivity() {
         applySystemBarInsets()
 
         prefs = getSharedPreferences("iptv_prefs", Context.MODE_PRIVATE)
+        // One-time refetch after the Xtream live-container fix: the cached catalogue still
+        // holds live URLs built as .m3u8, which stay broken on HLS-less panels until the 24h
+        // TTL runs out. Marking it stale serves the cache as usual and refreshes underneath.
+        if (!prefs.getBoolean(PREF_LIVE_CONTAINER_REFETCHED, false)) {
+            prefs.edit().putLong(PREF_CATALOG_REFRESHED_AT, 0L).putBoolean(PREF_LIVE_CONTAINER_REFETCHED, true).apply()
+        }
         // Re-apply the persisted UI language before any views inflate (AppCompatDelegate has
         // its own storage, but the pref is the source of truth for the audio/subtitle/TMDB
         // cascade, and the override here also covers fresh installs and restored backups).

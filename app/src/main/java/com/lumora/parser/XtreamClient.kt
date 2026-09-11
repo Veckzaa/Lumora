@@ -24,6 +24,21 @@ private const val TAG = "XtreamClient"
  *  per-call XtreamClient instances so the guide stays consistent across channels. */
 private val epgShiftSecondsCache = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
+internal const val LIVE_CONTAINER_HLS = "m3u8"
+internal const val LIVE_CONTAINER_TS = "ts"
+
+/**
+ * The extension to build live stream URLs with, from the account's `allowed_output_formats`.
+ *
+ * Live streams carry no container_extension on the bulk list, and every live URL used to be
+ * built as .m3u8 - but HLS output is a per-account panel switch, and a panel with it off
+ * answers every .m3u8 request with HTTP 405 while serving the same stream as .ts. So HLS
+ * only when the account lists it; MPEG-TS otherwise, including when the panel sends no list,
+ * since TS is the output every Xtream panel serves.
+ */
+internal fun liveContainerFor(allowedOutputFormats: List<String>): String =
+    if (LIVE_CONTAINER_HLS in allowedOutputFormats) LIVE_CONTAINER_HLS else LIVE_CONTAINER_TS
+
 class XtreamClient(private val client: OkHttpClient) {
 
     // fetchJson() swallows exceptions into a null return so most callers can just treat
@@ -40,7 +55,10 @@ class XtreamClient(private val client: OkHttpClient) {
         val serverProtocol: String? = null,
         val valid: Boolean = false,
         val expDateSeconds: Long? = null,
-        val isTrial: Boolean = false
+        val isTrial: Boolean = false,
+        /** `user_info.allowed_output_formats`, lowercased - e.g. ["m3u8", "ts"]. Empty when
+         *  the panel doesn't say. See [liveContainerFor]. */
+        val allowedOutputFormats: List<String> = emptyList()
     )
 
     data class EpgProgram(
@@ -87,7 +105,10 @@ class XtreamClient(private val client: OkHttpClient) {
                     serverProtocol = userInfo.optString("server_protocol"),
                     valid = auth == "1",
                     expDateSeconds = userInfo.optString("exp_date", "").toLongOrNull(),
-                    isTrial = userInfo.optString("is_trial", "0") == "1"
+                    isTrial = userInfo.optString("is_trial", "0") == "1",
+                    allowedOutputFormats = userInfo.optJSONArray("allowed_output_formats")
+                        ?.let { arr -> (0 until arr.length()).map { arr.optString(it).trim().lowercase() } }
+                        .orEmpty()
                 ))
             } else {
                 Result.failure(Exception("Invalid server response - check URL and credentials"))
@@ -110,9 +131,10 @@ class XtreamClient(private val client: OkHttpClient) {
     suspend fun getSeriesCategories(provider: Provider): List<Pair<String, String>> =
         fetchCategoryList(provider, "series")
 
-    /** Fetch live streams. */
-    suspend fun getLiveStreams(provider: Provider, categoryId: String? = null): List<Channel> =
-        fetchStreamList(provider, "get_live_streams", categoryId, MediaType.LIVE)
+    /** Fetch live streams. [liveContainer] is the extension live URLs are built with - pick it
+     *  with [liveContainerFor] from the account's allowed output formats. */
+    suspend fun getLiveStreams(provider: Provider, liveContainer: String, categoryId: String? = null): List<Channel> =
+        fetchStreamList(provider, "get_live_streams", categoryId, MediaType.LIVE, liveContainer)
 
     /** Fetch VOD streams. */
     suspend fun getVodStreams(provider: Provider, categoryId: String? = null): List<Channel> =
@@ -275,7 +297,8 @@ class XtreamClient(private val client: OkHttpClient) {
         provider: Provider,
         action: String,
         categoryId: String?,
-        mediaType: MediaType
+        mediaType: MediaType,
+        liveContainer: String = LIVE_CONTAINER_HLS
     ): List<Channel> = withContext(Dispatchers.IO) {
         val params = StringBuilder("action=$action")
         if (!categoryId.isNullOrBlank()) params.append("&category_id=$categoryId")
@@ -291,7 +314,7 @@ class XtreamClient(private val client: OkHttpClient) {
         val arr = json.optJSONArray(key) ?: json.optJSONArray("items") ?: return@withContext emptyList()
         (0 until arr.length()).mapNotNull { i ->
             val obj = arr.optJSONObject(i) ?: return@mapNotNull null
-            parseStream(obj, mediaType, provider)
+            parseStream(obj, mediaType, provider, liveContainer)
         }
     }
 
@@ -342,7 +365,7 @@ class XtreamClient(private val client: OkHttpClient) {
         return ""
     }
 
-    private fun parseStream(obj: JSONObject, mediaType: MediaType, provider: Provider): Channel? {
+    private fun parseStream(obj: JSONObject, mediaType: MediaType, provider: Provider, liveContainer: String): Channel? {
         val streamId = obj.optString("stream_id", "")
         if (streamId.isBlank()) return null
         val name = obj.optString("name", "Unknown")
@@ -353,7 +376,7 @@ class XtreamClient(private val client: OkHttpClient) {
         val categoryName = obj.optString("category_name", "").let { if (it == "null") "" else it }
         val rating = obj.optString("rating", "")
         val year = obj.optString("year", "")
-        val container = obj.optString("container_extension", if (mediaType == MediaType.LIVE) "m3u8" else "mp4")
+        val container = obj.optString("container_extension", if (mediaType == MediaType.LIVE) liveContainer else "mp4")
         val base = provider.serverUrl?.let { normalizeServerUrl(it) }
         val streamUrl = when (mediaType) {
             MediaType.MOVIE -> "$base/movie/${provider.username}/${provider.password}/$streamId.$container"

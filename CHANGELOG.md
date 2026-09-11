@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Live TV
+- **Live channels play on Xtream providers that have HLS switched off.** Lumora always asked for live channels in HLS format, and panels that don't offer it refused every request, so no live channel would start. Lumora now checks which formats your account allows and falls back to MPEG-TS when HLS isn't one of them. Your channel list refreshes once after updating to pick this up.
+
 ## 4.5.1
 
 ### Live TV
