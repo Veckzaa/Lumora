@@ -89,7 +89,7 @@ class XtreamClient(private val client: OkHttpClient) {
     suspend fun authenticate(provider: Provider): Result<ServerInfo> = withContext(Dispatchers.IO) {
         try {
             val url = buildApiUrl(provider, "")
-            Log.d(TAG, "Auth URL: ${url.take(80)}...")
+            Log.d(TAG, "Auth URL: ${redact(url)}")
             lastFetchError = null
             val json = fetchJson(url)
                 ?: return@withContext Result.failure(Exception(lastFetchError ?: "Empty response from server"))
@@ -453,6 +453,11 @@ class XtreamClient(private val client: OkHttpClient) {
         )
     }
 
+    /** A player_api URL with its credentials blanked, for logging: the raw URL carries the
+     *  provider's username and password, and logcat is readable by anything with adb. */
+    private fun redact(url: String): String =
+        url.replace(Regex("(username|password)=[^&]*"), "$1=…")
+
     private fun buildApiUrl(provider: Provider, params: String): String {
         val base = provider.serverUrl?.let { normalizeServerUrl(it) } ?: ""
         val user = URLEncoder.encode(provider.username.orEmpty(), "UTF-8")
@@ -475,7 +480,7 @@ class XtreamClient(private val client: OkHttpClient) {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     lastFetchError = "Server returned HTTP ${response.code}"
-                    Log.w(TAG, "HTTP ${response.code} for $url")
+                    Log.w(TAG, "HTTP ${response.code} for ${redact(url)}")
                     return@use null
                 }
                 val body = response.body?.string() ?: return@use null
@@ -504,7 +509,7 @@ class XtreamClient(private val client: OkHttpClient) {
             }
         } catch (e: Exception) {
             lastFetchError = e.message ?: e.javaClass.simpleName
-            Log.w(TAG, "Network error fetching $url: ${e.message}")
+            Log.w(TAG, "Network error fetching ${redact(url)}: ${e.message}")
             null
         }
     }
@@ -530,7 +535,7 @@ class XtreamClient(private val client: OkHttpClient) {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     lastFetchError = "Server returned HTTP ${response.code}"
-                    Log.w(TAG, "HTTP ${response.code} for $url")
+                    Log.w(TAG, "HTTP ${response.code} for ${redact(url)}")
                     return@use null
                 }
                 // charStream() honours a BOM and the declared charset, as body.string() did.
@@ -553,7 +558,7 @@ class XtreamClient(private val client: OkHttpClient) {
             }
         } catch (e: Exception) {
             lastFetchError = e.message ?: e.javaClass.simpleName
-            Log.w(TAG, "Network error fetching $url: ${e.message}")
+            Log.w(TAG, "Network error fetching ${redact(url)}: ${e.message}")
             null
         }
     }
