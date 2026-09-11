@@ -5,6 +5,7 @@
 ### Performance
 - **Large Xtream providers load with a fraction of the memory.** Refreshing a provider used to hold its entire channel list in memory several times over while reading it, which on providers with tens of thousands of channels could run a 1 GB Fire TV stick out of memory. Lumora now reads the list as it downloads and keeps only the channels, so a refresh is faster and far less likely to fail on big providers.
 - **Scrolling the TV guide is lighter.** Each channel row that scrolls into view now costs less to prepare, and favouriting a channel or setting a reminder updates that one row instead of redrawing the whole guide, so the star lands instantly and the selection stays where it was.
+- **XMLTV guide updates are about three times faster.** The programme guide downloaded from an XMLTV source is now read by a small native parser, so a big source takes a third of the time and less than half the memory to process in the background. Devices that can't load the native code keep using the old parser.
 - **Opening Lumora with a large catalogue is quicker and lighter on memory.** Reading the saved channel list back on startup created a pile of throwaway data for every channel, and kept a separate copy of the same group and category names for each of thousands of channels. It now reads each line in one pass and shares those names, so the list loads in about half the time and the app holds noticeably less memory for as long as it runs - which matters most on older Fire TV sticks.
 
 ### Playlists

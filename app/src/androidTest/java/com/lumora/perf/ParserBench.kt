@@ -60,11 +60,22 @@ class ParserBench {
         }
     }
 
+    /** The parser the app uses: native when the library loaded, Kotlin otherwise. */
     @Test
     fun xmltvParse50k() {
         val file = File(context.cacheDir, "bench.xml").also { Fixtures.writeXmltv(it) }
         Bench.run("B5 xmltv parse 50k", prepare = { }) {
             val result = file.inputStream().buffered().use { XmltvParser.parse(it) }
+            check(result.programmes.size == Fixtures.EPG_PROGRAMMES) { "parsed ${result.programmes.size}" }
+        }
+    }
+
+    /** The Kotlin parser on its own, for the before/after next to B5 while both copies exist. */
+    @Test
+    fun xmltvParse50kKotlin() {
+        val file = File(context.cacheDir, "bench.xml").also { Fixtures.writeXmltv(it) }
+        Bench.run("B5k xmltv parse 50k kotlin", prepare = { }) {
+            val result = file.inputStream().buffered().use { XmltvParser.parse(it, native = false) }
             check(result.programmes.size == Fixtures.EPG_PROGRAMMES) { "parsed ${result.programmes.size}" }
         }
     }

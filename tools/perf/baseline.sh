@@ -21,6 +21,7 @@ BENCHES=(
   ParserBench#m3uParse50k
   ParserBench#xtreamLive30k
   ParserBench#xmltvParse50k
+  ParserBench#xmltvParse50kKotlin
   EpgStoreBench#replace50kRows
   GroupingBench#liveGrouping30k
   GroupingBench#vodGrouping20k

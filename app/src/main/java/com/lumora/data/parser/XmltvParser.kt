@@ -1,9 +1,13 @@
 package com.lumora.data.parser
 
 import android.util.Log
+import com.lumora.nativelib.LumoraNative
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
+import java.io.IOException
 import java.io.InputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.TimeZone
 
 /**
@@ -45,8 +49,59 @@ object XmltvParser {
 
     /**
      * Parse an XMLTV feed from an input stream.
+     *
+     * Goes through the Rust parser when the native library loaded (R2 in the perf plan), and
+     * otherwise through [parseKotlin]. [native] is a parameter so the parity test and the
+     * benchmarks can run both on one device.
      */
-    fun parse(inputStream: InputStream): XmltvResult {
+    fun parse(inputStream: InputStream, native: Boolean = LumoraNative.available): XmltvResult =
+        if (native) parseNative(inputStream) else parseKotlin(inputStream)
+
+    private fun parseNative(inputStream: InputStream): XmltvResult {
+        val blob = LumoraNative.parseXmltv(inputStream) ?: throw IOException("native XMLTV parse failed")
+        return decodeNative(blob)
+    }
+
+    /**
+     * Decodes the record native/src/xmltv.rs produces. Only the fields the EPG sync reads are
+     * carried (channel, title, start, stop; channel id and display name); the rest of
+     * [XmltvProgramme] stays at its defaults.
+     *
+     * Stamps the native side could not turn into an instant - no zone suffix, or a zone
+     * name - arrive as wall-clock seconds plus the zone string, and are finished here with the
+     * same [TimeZone] rules [parseXmltvDate] applies.
+     */
+    internal fun decodeNative(blob: ByteArray): XmltvResult {
+        val buf = ByteBuffer.wrap(blob).order(ByteOrder.LITTLE_ENDIAN)
+        fun str(): String {
+            val len = buf.short.toInt() and 0xffff
+            val s = String(blob, buf.position(), len, Charsets.UTF_8)
+            buf.position(buf.position() + len)
+            return s
+        }
+        val version = buf.int
+        if (version != 1) throw IOException("native XMLTV record version $version")
+        val ids = Array(buf.int) { str() }
+        val channels = List(buf.int) { XmltvChannel(id = ids[buf.int], displayName = str()) }
+        // Index 0 means "already an instant", so the table is 1-based.
+        val zones = Array((buf.short.toInt() and 0xffff) + 1) { if (it == 0) "" else str() }
+        val count = buf.int
+        val programmes = ArrayList<XmltvProgramme>(count)
+        repeat(count) {
+            val channel = ids[buf.int]
+            var start = buf.long
+            var stop = buf.long
+            val startZone = buf.short.toInt() and 0xffff
+            val stopZone = buf.short.toInt() and 0xffff
+            if (startZone != 0) start = fromWallClock(zones[startZone], start)
+            if (stopZone != 0) stop = fromWallClock(zones[stopZone], stop)
+            programmes.add(XmltvProgramme(channel = channel, title = str(), startTimestamp = start, stopTimestamp = stop))
+        }
+        return XmltvResult(channels, programmes)
+    }
+
+    /** The Kotlin parser, kept as the fallback for devices where the native library can't load. */
+    internal fun parseKotlin(inputStream: InputStream): XmltvResult {
         val channels = mutableListOf<XmltvChannel>()
         val programmes = mutableListOf<XmltvProgramme>()
 
@@ -295,7 +350,7 @@ object XmltvParser {
         while (i < s.length && (s[i] == ' ' || s[i] == '\t')) i++
         // No zone at all: XMLTV says the stamp is local time, which is also what the old bare
         // "yyyyMMddHHmmss" pattern did with it.
-        if (i >= s.length) return wallSeconds - zoneOffsetSeconds(TimeZone.getDefault(), wallSeconds)
+        if (i >= s.length) return fromWallClock("", wallSeconds)
 
         val sign = when (s[i]) {
             '+' -> 1
@@ -312,13 +367,21 @@ object XmltvParser {
             return wallSeconds - sign * (offsetHours * 3600L + offsetMinutes * 60L)
         }
 
-        // A zone name. TimeZone.getTimeZone silently answers GMT for anything it doesn't
-        // recognise, which would be a real (wrong) timestamp rather than a rejection - so only
-        // trust an id the platform echoes back, and otherwise read the stamp as local time,
-        // which is where the old format list fell through to as well.
-        val id = s.substring(i)
-        val tz = TimeZone.getTimeZone(id)
-        val resolved = if (tz.id == id) tz else TimeZone.getDefault()
+        return fromWallClock(s.substring(i), wallSeconds)
+    }
+
+    /**
+     * The instant a wall-clock reading of [wallSeconds] names in zone [zone] - the device's
+     * zone when [zone] is empty.
+     *
+     * A zone name: TimeZone.getTimeZone silently answers GMT for anything it doesn't
+     * recognise, which would be a real (wrong) timestamp rather than a rejection - so only
+     * trust an id the platform echoes back, and otherwise read the stamp as local time, which
+     * is where the old format list fell through to as well.
+     */
+    private fun fromWallClock(zone: String, wallSeconds: Long): Long {
+        val resolved = if (zone.isEmpty()) TimeZone.getDefault()
+        else TimeZone.getTimeZone(zone).let { if (it.id == zone) it else TimeZone.getDefault() }
         return wallSeconds - zoneOffsetSeconds(resolved, wallSeconds)
     }
 

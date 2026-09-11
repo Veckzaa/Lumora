@@ -265,6 +265,33 @@ dependencies {
     androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
 
+// Builds native/ (Rust, see the native policy in CLAUDE.md) into src/main/jniLibs before the
+// app compiles. A plain Exec task rather than a Gradle plugin: cargo-ndk does all the work.
+// Needs rustup with the four Android targets and `cargo install cargo-ndk`; the NDK comes
+// from the SDK directory. The app loads the library lazily and falls back to the Kotlin path
+// when it is missing, so a build without cargo still runs - it just doesn't get the fast
+// parsers, hence the warning rather than a failure.
+val cargoNdkBuild = tasks.register<Exec>("cargoNdkBuild") {
+    val jniLibs = layout.projectDirectory.dir("src/main/jniLibs")
+    val cargo = File(System.getenv("CARGO_HOME") ?: "${System.getProperty("user.home")}/.cargo", "bin/cargo")
+    workingDir = rootProject.file("native")
+    inputs.dir(rootProject.file("native/src"))
+    inputs.files(rootProject.file("native/Cargo.toml"), rootProject.file("native/Cargo.lock"))
+    outputs.dir(jniLibs)
+    environment("ANDROID_HOME", android.sdkDirectory.path)
+    commandLine(
+        cargo.path, "ndk",
+        "-t", "armeabi-v7a", "-t", "arm64-v8a", "-t", "x86", "-t", "x86_64",
+        "-o", jniLibs.asFile.path, "build", "--release"
+    )
+    onlyIf {
+        val present = cargo.exists()
+        if (!present) logger.warn("cargo not found at $cargo: building without the native library (Kotlin fallbacks)")
+        present
+    }
+}
+tasks.named("preBuild") { dependsOn(cargoNdkBuild) }
+
 // Passes -Dtest.quickjs.so through to the test JVM. wrapper-android's prebuilt native lib only
 // covers Android ABIs, so JsPluginEngineTest's real QuickJS execution needs a desktop build of
 // wrapper-java's native lib to run locally (see JsPluginEngineTest for the build steps) - a

@@ -1,0 +1,22 @@
+[package]
+name = "lumora_native"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Pull XML parser over a BufRead: the feed streams straight from OkHttp into it, so a 50 MB
+# source never sits in memory whole. No `encoding` feature: the Kotlin parser also reads every
+# feed as UTF-8, and parity with it is what the port is held to.
+quick-xml = { version = "0.37", default-features = false }
+jni = "0.21"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+opt-level = 3
