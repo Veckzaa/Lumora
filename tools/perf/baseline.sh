@@ -93,17 +93,26 @@ for run in $(seq "$STARTS"); do
 done
 
 echo "== Scroll jank"
+# THROTTLE=<percent> caps the emulator's CPU for this measurement (tools/perf/throttle.sh):
+# uncapped, the host GPU and CPU draw every guide frame in 5 ms and M5 reads 0% jank whatever
+# the rows cost. 40% puts the emulator's cold start near a stick's, so its M5 is comparable.
+if [ -n "${THROTTLE:-}" ]; then tools/perf/throttle.sh "$THROTTLE"; fi
 # Launch leaves focus on the category sidebar, where the presses scrolled the categories rather
-# than the guide: step into the guide first. The presses loop inside one device shell: one
-# `adb shell input` per press spawns a process each and paces them far apart, while passing all
-# of them to a single `input` call fires them faster than the list lays out the next row, and
-# the D-pad drops most of them.
-$ADB shell input keyevent KEYCODE_DPAD_RIGHT
+# than the guide: step into the guide first. Presses go straight to the input device with
+# sendevent, 50 ms apart like a held remote: `input keyevent` starts a Java process per press
+# inside the guest, which under a CPU cap costs more than the app's own work.
+press() { # $1 = Linux key code, $2 = count
+  $ADB shell "for i in \$(seq $2); do sendevent $INPUT_DEV 1 $1 1; sendevent $INPUT_DEV 0 0 0; sendevent $INPUT_DEV 1 $1 0; sendevent $INPUT_DEV 0 0 0; sleep 0.05; done"
+}
+INPUT_DEV=$($ADB shell getevent -pl | tr -d '\r' | awk '/add device/ {d=$4} /KEY_DOWN/ {print d; exit}')
+press 106 1   # KEY_RIGHT
 $ADB shell sleep 2
 $ADB shell dumpsys gfxinfo "$PKG" reset >/dev/null
-$ADB shell 'for i in $(seq 40); do input keyevent KEYCODE_DPAD_DOWN; done; for i in $(seq 40); do input keyevent KEYCODE_DPAD_UP; done'
+press 108 40  # KEY_DOWN
+press 103 40  # KEY_UP
 $ADB shell sleep 1
 $ADB shell dumpsys gfxinfo "$PKG" | tr -d '\r' | grep -E 'Total frames rendered|Janky frames|(50|90|95|99)th percentile' | sed 's/^ *//' > "$OUT/jank.txt"
+if [ -n "${THROTTLE:-}" ]; then tools/perf/throttle.sh off; echo "- emulator CPU capped at ${THROTTLE}% (tools/perf/throttle.sh)" >> "$OUT/jank.txt"; fi
 
 # ── Summary ───────────────────────────────────────────
 median() { sort -g | awk '{v[NR]=$1} END {print NR ? v[int((NR+1)/2)] : "n/a"}'; }

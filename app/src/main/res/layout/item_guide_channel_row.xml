@@ -2,7 +2,13 @@
 <!-- clipChildren/clipToPadding false: guideChannelInfo and each guideProgramRow cell are
      height=match_parent and scale to 1.06x on focus (focus_scale/focus_scale_flat) - without
      this the scale-up overflows this row's own wrap_content bounds and gets clipped top+
-     bottom, making the focus highlight look cut off / cropped. -->
+     bottom, making the focus highlight look cut off / cropped. (Don't reach for
+     outlineProvider="none" to drop the focus shadow either: a translationZ-lifted view with
+     no outline gets clipped to its unscaled bounds, and the card lost its left edge.)
+
+     No fading edge on the programme scroller: each edge is an offscreen layer per row per
+     frame, and with it every scrolled row re-recorded its display list on every frame of a
+     D-pad scroll (draw recording 4 ms a frame on a capped emulator, 0 without). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -139,9 +145,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:overScrollMode="never"
-            android:scrollbars="none"
-            android:requiresFadingEdge="horizontal"
-            android:fadingEdgeLength="18dp">
+            android:scrollbars="none">
 
             <LinearLayout
                 android:id="@+id/guideProgramRow"
