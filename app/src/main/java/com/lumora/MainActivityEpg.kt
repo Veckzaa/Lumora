@@ -91,7 +91,15 @@ internal suspend fun MainActivity.resolveEpgPrograms(channelId: String): List<Xt
     val client = XtreamClient(BaseApplication.instance.okHttpClient)
     for (ch in epgCandidateChannels(channelId)) {
         val chProvider = xtreamProviderFor(ch) ?: continue
-        val programs = runCatching { client.getShortEpg(chProvider, ch.id, 16) }.getOrDefault(emptyList())
+        val programs = try {
+            client.getShortEpg(chProvider, ch.id, 16)
+        } catch (e: CancellationException) {
+            // The guide row scrolled away mid-fetch. runCatching swallowed this, returned null,
+            // and the guide cached the channel as having no programmes for the session.
+            throw e
+        } catch (_: Exception) {
+            emptyList()
+        }
         if (programs.isNotEmpty()) {
             persistEpgPrograms(channelId, programs)
             return programs

@@ -131,6 +131,7 @@ class LiveGuideAdapter(
         super.onViewAttachedToWindow(holder)
         boundScrollViews.add(holder.scrollView)
         if (holder.scrollView.scrollX != sharedScrollX) holder.scrollView.scrollTo(sharedScrollX, 0)
+        holder.reloadIfCancelled()
     }
 
     override fun onViewDetachedFromWindow(holder: RowViewHolder) {
@@ -200,6 +201,18 @@ class LiveGuideAdapter(
                 } else false
             }
             scrollView.setOnScrollChangeListener { v, scrollX, _, _, _ -> broadcastScroll(scrollX, v as HorizontalScrollView) }
+        }
+
+        /** Detaching cancels this row's fetches, and RecyclerView puts a row that scrolled off a
+         *  step or two ago back on screen from its view cache without rebinding it. A row whose
+         *  schedule or logo hadn't landed by then came back with nothing fetching it, and sat on
+         *  the skeleton until the user scrolled it far enough away to be rebound. */
+        fun reloadIfCancelled() {
+            val channel = current ?: return
+            if (loadJob?.isActive == true || logoJob?.isActive == true) return
+            val epgMissing = channel.id.isNotBlank() && !EpgListCache.has(channel.id)
+            val logoMissing = !channel.logoUrl.isNullOrBlank() && logoImage.visibility != View.VISIBLE
+            if (epgMissing || logoMissing) bind(channel)
         }
 
         fun cancelPendingLoad() {
