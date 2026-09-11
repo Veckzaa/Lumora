@@ -349,12 +349,16 @@ internal fun MainActivity.buildGuideHeader() {
     val density = resources.displayMetrics.density
     val slotWidthPx = (30 * LiveGuideAdapter.MINUTE_WIDTH_DP * density).toInt()
     val timeFmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-    val calendar = java.util.Calendar.getInstance()
+    // The timeline starts on the half hour (20:00 for a guide opened at 20:04), and the rows
+    // draw from the same origin - a programme already running is clipped to it.
+    val origin = LiveGuideAdapter.halfHourFloor(System.currentTimeMillis())
+    liveAdapter.timelineOriginSeconds = origin
+    val calendar = java.util.Calendar.getInstance().apply { timeInMillis = origin * 1000 }
 
     binding.guideHeaderRow.removeAllViews()
-    repeat(24) { index ->
+    repeat(24) {
         val label = TextView(this).apply {
-            text = if (index == 0) getString(R.string.list_now) else timeFmt.format(calendar.time)
+            text = timeFmt.format(calendar.time)
             setTextColor(getColor(R.color.text_tertiary))
             // Built in code, so it needs the dimen read explicitly to pick up the
             // large-screen tier that the XML-inflated guide rows below it get for free.

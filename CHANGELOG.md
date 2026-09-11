@@ -17,6 +17,7 @@
 - **Non-English films and series are shown by default.** "Hide non-English movies/series" used to be on out of the box, which left the French (or any other language) categories nearly empty until you found the setting. It now starts off; the toggle is still in Settings if you want it.
 
 ### Live TV
+- **The guide timeline starts on the half hour.** Open it at 20:04 and the ruler starts at 20:00, with the programme already running drawn from 20:00, instead of a "Now" column cut at the exact minute you opened it. Channels with no programme information now show that as one bar across the row rather than a small box.
 - **The selected channel card is no longer cut off on the left.** Its zoom-in on selection was being clipped to the row since the guide rework.
 - **Smoother guide scrolling on Fire TV.** The programme rows no longer fade out at their edges; that effect made every row redraw on every frame of a scroll, which is what made the remote feel sluggish on a stick.
 - **Channels no longer get stuck loading in the guide.** A channel row that had scrolled off the screen and come straight back could sit on its loading placeholder for good, because its schedule fetch had been cancelled on the way out and nothing restarted it; it only loaded once you scrolled far enough away and back. It now picks the fetch up again as soon as it reappears. Separately, a channel whose row scrolled away in the middle of its fetch was being remembered as having no programme information for the rest of the session.

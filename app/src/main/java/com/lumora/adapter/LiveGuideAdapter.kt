@@ -26,7 +26,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private const val FILLER_MINUTES = 30
 // Placeholder programme lengths while a row's schedule loads, rotated per channel so the
 // loading rows don't line up into a grid that reads as real, identical programmes.
 private val SKELETON_MINUTES = intArrayOf(45, 30, 60, 30, 45)
@@ -68,7 +67,26 @@ class LiveGuideAdapter(
          *  buildGuideHeader() so the time ruler's 30-minute slots stay in step with the
          *  program blocks below them. */
         const val MINUTE_WIDTH_DP = 2.6f
+
+        /** The half hour [nowMillis] falls in, as unix seconds: where the timeline starts. */
+        fun halfHourFloor(nowMillis: Long): Long {
+            val cal = java.util.Calendar.getInstance().apply {
+                timeInMillis = nowMillis
+                set(java.util.Calendar.MILLISECOND, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MINUTE, get(java.util.Calendar.MINUTE) / 30 * 30)
+            }
+            return cal.timeInMillis / 1000
+        }
     }
+
+    /**
+     * Where every row's timeline starts, in unix seconds: the half hour the guide was opened
+     * in (20:00 for a guide opened at 20:04), set by buildGuideHeader() so the rows and the
+     * ruler above them read the same origin. A programme that began earlier is drawn from
+     * here. 0 until the ruler has been built; rows then take the current half hour.
+     */
+    var timelineOriginSeconds: Long = 0
 
     private val scope = CoroutineScope(Dispatchers.Main)
     private val avatarColors = intArrayOf(
@@ -360,7 +378,9 @@ class LiveGuideAdapter(
         private fun renderPrograms(channel: Channel, programs: List<XtreamClient.EpgProgram>?, pending: Boolean = false) {
             // One clock read for the whole row, not one per block: every block is judging
             // itself against the same instant anyway.
-            val nowSeconds = System.currentTimeMillis() / 1000
+            val nowMillis = System.currentTimeMillis()
+            val nowSeconds = nowMillis / 1000
+            val origin = timelineOriginSeconds.takeIf { it > 0 } ?: halfHourFloor(nowMillis)
             val count = when {
                 pending -> SKELETON_MINUTES.size
                 programs.isNullOrEmpty() -> 1
@@ -373,6 +393,9 @@ class LiveGuideAdapter(
             // Straight from the programme list into the block Views, with no per-bind list of
             // intermediate block descriptions in between: that list, its 16 objects and the
             // destructuring per block were most of what a row bind allocated (B9).
+            // Blocks are laid down at `slot`, which lags `i` by the programmes that ended
+            // before the timeline's origin and get no block.
+            var slot = 0
             for (i in 0 until count) {
                 val program: XtreamClient.EpgProgram?
                 val title: String
@@ -387,29 +410,33 @@ class LiveGuideAdapter(
                     isCurrent = false
                 } else if (programs.isNullOrEmpty()) {
                     // No EPG data for this channel - a single filler block keeps the row
-                    // clickable and visually aligned with rows that do have data. Repeating
-                    // the channel's own name here just reads as duplicated text right next
-                    // to the name column, so use a neutral label instead.
+                    // clickable; it fills the visible timeline (width 0 + weight, and the
+                    // scroller's fillViewport) rather than sitting as one short box among
+                    // full rows. Repeating the channel's own name here just reads as
+                    // duplicated text right next to the name column, so a neutral label.
                     program = null
                     title = itemView.context.getString(R.string.list_no_programme_info)
-                    minutes = FILLER_MINUTES.toLong()
+                    minutes = 0
                     isCurrent = false
                 } else {
                     program = programs!![i]
+                    // Ended before the timeline starts: nothing to draw.
+                    if (program.stopTimestamp <= origin) continue
                     title = program.title
                     isCurrent = nowSeconds in program.startTimestamp until program.stopTimestamp
-                    // The currently-airing block is truncated to its remaining time so every
-                    // row's timeline starts flush at "now", keeping columns aligned without
-                    // needing a separate absolute-position/overlay system.
-                    val effectiveStart = if (isCurrent) nowSeconds else program.startTimestamp
+                    // A programme that began before the origin is drawn from the origin, so
+                    // every row's timeline starts flush at the same half hour as the ruler.
+                    val effectiveStart = maxOf(program.startTimestamp, origin)
                     minutes = ((program.stopTimestamp - effectiveStart) / 60).coerceAtLeast(1)
                 }
-                val widthPx = (minutes * MINUTE_WIDTH_DP * density).toInt()
+                val fill = minutes == 0L
+                val widthPx = if (fill) 0 else (minutes * MINUTE_WIDTH_DP * density).toInt()
 
                 // Reuse existing block Views where possible instead of tearing every child
                 // down and rebuilding on every rebind - this was the main source of GC
                 // churn/jank scrolling through a large guide.
-                val block = programRow.getChildAt(i) as? TextView ?: makeBlock().also { programRow.addView(it) }
+                val block = programRow.getChildAt(slot) as? TextView ?: makeBlock().also { programRow.addView(it) }
+                slot++
                 // Same leftover-transform defense as channelInfo above - these blocks are
                 // reused across binds too, so a stuck transform from a previous focus state
                 // would otherwise persist onto whatever program now occupies this block.
@@ -439,12 +466,14 @@ class LiveGuideAdapter(
                 // Same idea for the width: setLayoutParams always requests a layout, and
                 // rows scrolled back into view mostly get the widths they already have.
                 val lp = block.layoutParams as LinearLayout.LayoutParams
-                if (lp.width != widthPx) {
+                val weight = if (fill) 1f else 0f
+                if (lp.width != widthPx || lp.weight != weight) {
                     lp.width = widthPx
+                    lp.weight = weight
                     block.layoutParams = lp
                 }
             }
-            while (programRow.childCount > count) {
+            while (programRow.childCount > slot) {
                 programRow.removeViewAt(programRow.childCount - 1)
             }
             // Store and render the now/next line from the same data that built the blocks,
