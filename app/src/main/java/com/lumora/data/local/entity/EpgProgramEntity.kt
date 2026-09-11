@@ -14,11 +14,16 @@ import androidx.room.Index
  * Keyed by (channelId, startTimestamp): a provider re-sending the same programme (a title
  * correction, a schedule shuffle) replaces the row rather than duplicating it. [fetchedAt] is
  * per row so a channel's freshness is judged by the newest row written for it.
+ *
+ * No separate channelId index: SQLite already indexes the primary key, and that index leads
+ * with channelId, so it serves every lookup and delete in EpgProgramDao, and hands upcomingFor
+ * its rows already in start order. A second index only doubled the index writes for every row
+ * of a guide sync on a stick's slow storage (perf plan E2, dropped in database v5).
  */
 @Entity(
     tableName = "epg_programs",
     primaryKeys = ["channelId", "startTimestamp"],
-    indices = [Index("channelId"), Index("stopTimestamp")]
+    indices = [Index("stopTimestamp")]
 )
 data class EpgProgramEntity(
     val channelId: String,

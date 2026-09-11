@@ -10,7 +10,7 @@ import com.lumora.data.local.dao.*
 import com.lumora.data.local.entity.*
 
 @Database(
-    version = 4,
+    version = 5,
     exportSchema = true,
     entities = [
         ProviderEntity::class,
@@ -74,6 +74,15 @@ abstract class LumoraDatabase : RoomDatabase() {
             }
         }
 
+        /** v5 drops the `channelId` index on `epg_programs`. The primary key's own index already
+         *  leads with channelId, so this one served no query and only added a second index
+         *  write for every guide row synced. Rows are untouched. */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS `index_epg_programs_channelId`")
+            }
+        }
+
         fun getInstance(context: Context): LumoraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -81,7 +90,7 @@ abstract class LumoraDatabase : RoomDatabase() {
                     LumoraDatabase::class.java,
                     "lumora.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                     .also { instance = it }
             }
