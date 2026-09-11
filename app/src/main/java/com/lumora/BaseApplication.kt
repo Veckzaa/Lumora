@@ -37,12 +37,10 @@ class BaseApplication : Application() {
         // measured from here, so the number matches what someone counting out loud sees.
         processStartedAt = System.currentTimeMillis()
 
-        // Initialize Google Cast framework (required before any Cast calls)
-        try {
-            com.google.android.gms.cast.framework.CastContext.getSharedInstance(this)
-        } catch (_: Exception) {
-            // Google Play Services not available on this device
-        }
+        // No Google Cast init here. CastManager.init() creates the CastContext before the player
+        // wires the Cast button, and on TVs Cast is never touched at all. The call that used to sit
+        // here ran on every launch before the first frame: a full Cast setup where Play Services
+        // exist, and on Fire TV (no Play Services) a probe that threw and was swallowed (perf plan S2).
 
         // Loads the native QuickJS .so; every QuickJSContext.create() call throws until this
         // has run once (see com.lumora.plugin.js.JsPluginEngine).
