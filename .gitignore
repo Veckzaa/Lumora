@@ -4,6 +4,8 @@ local.properties
 .slim/deepwork/
 *.iml
 .idea/
+tools/perf/results/
+docs/
 
 # Claude Code project instructions - local-only, not committed
 CLAUDE.md

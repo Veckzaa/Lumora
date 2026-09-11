@@ -37,6 +37,7 @@ android {
         targetSdk = 36
         versionCode = 41
         versionName = "4.5.1"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
@@ -101,7 +102,18 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
+        // What the perf baseline (tools/perf/baseline.sh) measures. Release code, not debuggable -
+        // ART drops most optimisation for debuggable apps, which would make every Kotlin baseline
+        // look slow and every native port look better than it is. Not minified, so the
+        // instrumented benchmarks can call app internals; debug-signed so it installs anywhere.
+        create("benchmark") {
+            initWith(getByName("release"))
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".bench"
+        }
     }
+    testBuildType = "benchmark"
 
     buildFeatures {
         viewBinding = true
@@ -238,6 +250,12 @@ dependencies {
     // Tests
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+
+    // Perf baseline benchmarks (app/src/androidTest/.../perf). kotlin-stdlib 1.8 inside, so no
+    // Kotlin toolchain pressure.
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
 
 // Passes -Dtest.quickjs.so through to the test JVM. wrapper-android's prebuilt native lib only
