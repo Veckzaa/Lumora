@@ -99,11 +99,11 @@ object M3uParser {
 
         // 2. Xtream-compatible URL layout - /live/, /movie/ and /series/ are structural, not a
         // naming convention, so they hold whatever the provider calls its categories.
-        val lowerUrl = url.lowercase()
+        // ignoreCase instead of a lowercase() copy of every url.
         when {
-            "/series/" in lowerUrl -> return MediaType.SERIES
-            "/movie/" in lowerUrl -> return MediaType.MOVIE
-            "/live/" in lowerUrl -> return MediaType.LIVE
+            url.contains("/series/", ignoreCase = true) -> return MediaType.SERIES
+            url.contains("/movie/", ignoreCase = true) -> return MediaType.MOVIE
+            url.contains("/live/", ignoreCase = true) -> return MediaType.LIVE
         }
 
         // 3. Group name keywords, series first - see SERIES_GROUP_KEYWORDS.
@@ -143,11 +143,11 @@ object M3uParser {
 
     private fun parseChannel(url: String, extInf: String?): Channel? {
         if (url.isBlank()) return null
-        val cleanUrl = url.split(" ").firstOrNull {
+        val cleanUrl = if (' ' !in url) url else url.split(" ").firstOrNull {
             it.startsWith("http") || it.startsWith("rtmp") || it.startsWith("rtsp")
         } ?: url
 
-        var name = "Channel ${url.hashCode()}"
+        var name: String? = null
         var logoUrl: String? = null
         var group: String? = null
         var tvgId: String? = null
@@ -158,19 +158,16 @@ object M3uParser {
         var rating: String? = null
 
         if (extInf != null) {
-            val attrRegex = """(\w[\w-]*)\s*=\s*"([^"]*)"""".toRegex()
-            var matchCount = 0
-            for (match in attrRegex.findAll(extInf)) {
-                if (++matchCount > 50) break // max 50 attributes per EXTINF
-                when (match.groupValues[1].lowercase()) {
-                    "tvg-id" -> tvgId = match.groupValues[2]
-                    "tvg-name" -> tvgName = match.groupValues[2]
-                    "tvg-logo" -> logoUrl = match.groupValues[2].ifBlank { null }
-                    "tvg-chno" -> tvgChno = match.groupValues[2]
-                    "tvg-type" -> tvgType = match.groupValues[2]
-                    "group-title" -> group = match.groupValues[2]
-                    "year" -> year = match.groupValues[2]
-                    "rating" -> rating = match.groupValues[2]
+            forEachAttribute(extInf) { ks, ke, vs, ve ->
+                when {
+                    extInf.keyIs(ks, ke, "tvg-id") -> tvgId = extInf.substring(vs, ve)
+                    extInf.keyIs(ks, ke, "tvg-name") -> tvgName = extInf.substring(vs, ve)
+                    extInf.keyIs(ks, ke, "tvg-logo") -> logoUrl = extInf.substring(vs, ve).ifBlank { null }
+                    extInf.keyIs(ks, ke, "tvg-chno") -> tvgChno = extInf.substring(vs, ve)
+                    extInf.keyIs(ks, ke, "tvg-type") -> tvgType = extInf.substring(vs, ve)
+                    extInf.keyIs(ks, ke, "group-title") -> group = extInf.substring(vs, ve)
+                    extInf.keyIs(ks, ke, "year") -> year = extInf.substring(vs, ve)
+                    extInf.keyIs(ks, ke, "rating") -> rating = extInf.substring(vs, ve)
                 }
             }
 
@@ -192,7 +189,8 @@ object M3uParser {
             // guide appeared stuck on one channel. Not tvg-id: playlists repeat that across
             // quality variants, which would reintroduce the collision on a smaller scale.
             id = cleanUrl,
-            name = name,
+            // Fallback built only when needed; it was formatted for every entry before.
+            name = name ?: "Channel ${url.hashCode()}",
             url = cleanUrl,
             logoUrl = logoUrl,
             posterUrl = if (mediaType != MediaType.LIVE) logoUrl else null,
@@ -208,6 +206,43 @@ object M3uParser {
         )
     }
 
+    /**
+     * Every `key="value"` pair in [extInf], as index bounds, up to 50 per line. Matches what the
+     * regex `(\w[\w-]*)\s*=\s*"([^"]*)"` found with findAll: the key is a word character followed
+     * by word characters or '-', whitespace is allowed around '=', the value runs to the next
+     * quote, and scanning resumes after it. This used to be that regex, compiled per entry (perf
+     * plan C4). On a 50k playlist the regex, then the match objects and lowercased keys created
+     * for every attribute, were most of the parse time and GC. Bounds let the caller copy out
+     * only the values it keeps.
+     */
+    private inline fun forEachAttribute(
+        extInf: String,
+        action: (keyStart: Int, keyEnd: Int, valueStart: Int, valueEnd: Int) -> Unit
+    ) {
+        var count = 0
+        var eq = extInf.indexOf('=')
+        while (eq >= 0 && count < 50) {
+            var open = eq + 1
+            while (open < extInf.length && extInf[open].isWhitespace()) open++
+            val close = if (open < extInf.length && extInf[open] == '"') extInf.indexOf('"', open + 1) else -1
+            var keyEnd = eq
+            while (keyEnd > 0 && extInf[keyEnd - 1].isWhitespace()) keyEnd--
+            var keyStart = keyEnd
+            while (keyStart > 0 && extInf[keyStart - 1].let { it.isLetterOrDigit() || it == '_' || it == '-' }) keyStart--
+            while (keyStart < keyEnd && extInf[keyStart] == '-') keyStart++ // a key can't start with '-'
+            if (close >= 0 && keyStart < keyEnd) {
+                count++
+                action(keyStart, keyEnd, open + 1, close)
+                eq = extInf.indexOf('=', close + 1)
+            } else {
+                eq = extInf.indexOf('=', eq + 1)
+            }
+        }
+    }
+
+    private fun String.keyIs(start: Int, end: Int, key: String): Boolean =
+        end - start == key.length && regionMatches(start, key, 0, key.length, ignoreCase = true)
+
     /** Index of the comma separating the EXTINF attribute list from the display title: the
      *  FIRST comma outside double quotes. Attribute values routinely contain commas
      *  (group-title="Films, Drama"), so lastIndexOf(',') turned every title that has a comma
@@ -216,8 +251,9 @@ object M3uParser {
      *  rules out scanning after the last quoted span instead. -1 when no such comma exists. */
     private fun titleSeparatorIndex(extInf: String): Int {
         var inQuotes = false
-        for ((index, c) in extInf.withIndex()) {
-            when (c) {
+        // Plain index loop: withIndex() boxed an IndexedValue per character of every EXTINF line.
+        for (index in extInf.indices) {
+            when (extInf[index]) {
                 '"' -> inQuotes = !inQuotes
                 ',' -> if (!inQuotes) return index
             }
