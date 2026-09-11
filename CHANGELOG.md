@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Performance
+- **Opening Lumora with a large catalogue is quicker and lighter on memory.** Reading the saved channel list back on startup created a pile of throwaway data for every channel, and kept a separate copy of the same group and category names for each of thousands of channels. It now reads each line in one pass and shares those names, so the list loads in about half the time and the app holds noticeably less memory for as long as it runs - which matters most on older Fire TV sticks.
+
 ### Playlists
 - **Large M3U playlists load much faster.** Reading each entry's details (name, logo, group) redid expensive setup work for every single line, so a playlist with tens of thousands of entries spent most of its load time on that instead of on your channels. That work now happens once, and loading also creates far less temporary data, which older Fire TV sticks were spending extra time cleaning up.
 
