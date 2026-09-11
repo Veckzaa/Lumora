@@ -1,6 +1,9 @@
 package com.lumora.parser
 
+import android.util.JsonReader
+import android.util.JsonToken
 import android.util.Log
+import android.util.MalformedJsonException
 import com.lumora.model.Channel
 import com.lumora.model.MediaType
 import com.lumora.model.Provider
@@ -15,6 +18,9 @@ import org.json.JSONObject
 import java.net.URLEncoder
 
 private const val TAG = "XtreamClient"
+
+/** Whitespace runs in category names - compiled once, it used to be built per category. */
+private val WHITESPACE_RUNS = Regex("\\s+")
 
 /**
  * Minimal Xtream Codes API client using OkHttp.
@@ -287,7 +293,7 @@ class XtreamClient(private val client: OkHttpClient) {
                 // odd gaps and break keyword grouping; fold them to plain spaces and collapse runs.
                 val name = obj.optString("category_name", "")
                     .replace(' ', ' ')
-                    .replace(Regex("\\s+"), " ")
+                    .replace(WHITESPACE_RUNS, " ")
                     .trim()
                 if (id.isNotBlank()) id to name else null
             }
@@ -303,19 +309,23 @@ class XtreamClient(private val client: OkHttpClient) {
         val params = StringBuilder("action=$action")
         if (!categoryId.isNullOrBlank()) params.append("&category_id=$categoryId")
         val url = buildApiUrl(provider, params.toString())
-        val json = fetchJson(url) ?: return@withContext emptyList()
+        // Many Xtream servers return a bare JSON array at the root instead of
+        // {"live_streams": [...]}; fetchItems() reads both shapes.
         val key = when (action) {
             "get_live_streams" -> "live_streams"
             "get_vod_streams" -> "vod_streams"
             else -> ""
         }
-        // Many Xtream servers return a bare JSON array at the root instead of
-        // {"live_streams": [...]}; fetchJson() wraps that case under "items".
-        val arr = json.optJSONArray(key) ?: json.optJSONArray("items") ?: return@withContext emptyList()
-        (0 until arr.length()).mapNotNull { i ->
-            val obj = arr.optJSONObject(i) ?: return@mapNotNull null
-            parseStream(obj, mediaType, provider, liveContainer)
+        // Once per list, not per stream: every stream shares the host and credentials, and
+        // normalizeServerUrl plus the whole URL template used to run for each of 30k items.
+        val base = provider.serverUrl?.let { normalizeServerUrl(it) }
+        val urlPrefix = when (mediaType) {
+            MediaType.MOVIE -> "$base/movie/${provider.username}/${provider.password}/"
+            MediaType.LIVE -> "$base/live/${provider.username}/${provider.password}/"
+            else -> "$base/${provider.username}/${provider.password}/"
         }
+        val defaultContainer = if (mediaType == MediaType.LIVE) liveContainer else "mp4"
+        fetchItems(url, key) { parseStream(it, mediaType, urlPrefix, defaultContainer) }.orEmpty()
     }
 
     private suspend fun fetchSeriesList(provider: Provider, categoryId: String?): List<Channel> =
@@ -323,12 +333,7 @@ class XtreamClient(private val client: OkHttpClient) {
             val params = StringBuilder("action=get_series")
             if (!categoryId.isNullOrBlank()) params.append("&category_id=$categoryId")
             val url = buildApiUrl(provider, params.toString())
-            val json = fetchJson(url) ?: return@withContext emptyList()
-            val arr = json.optJSONArray("series") ?: json.optJSONArray("items") ?: return@withContext emptyList()
-            (0 until arr.length()).mapNotNull { i ->
-                val obj = arr.optJSONObject(i) ?: return@mapNotNull null
-                parseSeriesItem(obj)
-            }
+            fetchItems(url, "series") { parseSeriesItem(it) }.orEmpty()
         }
 
     /**
@@ -354,54 +359,38 @@ class XtreamClient(private val client: OkHttpClient) {
      * first is used because across the live providers surveyed no stream ever belonged to more than
      * one category - the plural field is redundant, not true multi-membership.
      */
-    private fun resolveCategoryId(obj: JSONObject): String {
-        val single = obj.optString("category_id", "")
+    private fun resolveCategoryId(f: ItemFields): String {
+        val single = f.categoryId.orEmpty()
         if (single.isNotBlank() && single != "null") return single
-        val arr = obj.optJSONArray("category_ids") ?: return ""
-        for (i in 0 until arr.length()) {
-            val v = arr.optString(i, "")
-            if (v.isNotBlank() && v != "null") return v
-        }
-        return ""
+        return f.firstCategoryIdsEntry.orEmpty()
     }
 
-    private fun parseStream(obj: JSONObject, mediaType: MediaType, provider: Provider, liveContainer: String): Channel? {
-        val streamId = obj.optString("stream_id", "")
+    /** A JSON null value arrives as the literal "null" (org.json's optString did the same and the
+     *  rules below were written against it) - treat that as absent so it doesn't become a
+     *  category row named "null". */
+    private fun categoryNameOf(f: ItemFields): String = f.categoryName.let { if (it == null || it == "null") "" else it }
+
+    private fun parseStream(f: ItemFields, mediaType: MediaType, urlPrefix: String, defaultContainer: String): Channel? {
+        val streamId = f.streamId.orEmpty()
         if (streamId.isBlank()) return null
-        val name = obj.optString("name", "Unknown")
-        val streamIcon = obj.optString("stream_icon", "")
-        val categoryId = resolveCategoryId(obj)
-        // optString returns the literal "null" for a JSON null value on Android, not "" - treat
-        // that as absent so it doesn't become a category row named "null".
-        val categoryName = obj.optString("category_name", "").let { if (it == "null") "" else it }
-        val rating = obj.optString("rating", "")
-        val year = obj.optString("year", "")
-        val container = obj.optString("container_extension", if (mediaType == MediaType.LIVE) liveContainer else "mp4")
-        val base = provider.serverUrl?.let { normalizeServerUrl(it) }
-        val streamUrl = when (mediaType) {
-            MediaType.MOVIE -> "$base/movie/${provider.username}/${provider.password}/$streamId.$container"
-            MediaType.LIVE -> "$base/live/${provider.username}/${provider.password}/$streamId.$container"
-            else -> "$base/${provider.username}/${provider.password}/$streamId.$container"
-        }
+        val streamIcon = f.streamIcon.orEmpty()
         // Archive/catch-up availability, live only. Panels are inconsistent about the JSON
         // type here - some send tv_archive as a number, some as the string "1" - and
-        // optInt returns 0 for a string value, so read both shapes.
-        val archiveFlag = obj.opt("tv_archive")?.toString()?.trim()
+        // both read as the same text.
+        val archiveFlag = f.tvArchive?.trim()
         val hasArchive = mediaType == MediaType.LIVE && (archiveFlag == "1" || archiveFlag == "true")
-        val archiveDays = if (hasArchive) {
-            obj.opt("tv_archive_duration")?.toString()?.trim()?.toIntOrNull() ?: 0
-        } else 0
+        val archiveDays = if (hasArchive) f.tvArchiveDuration?.trim()?.toIntOrNull() ?: 0 else 0
         return Channel(
             id = streamId,
-            name = name,
-            url = streamUrl,
+            name = f.name ?: "Unknown",
+            url = "$urlPrefix$streamId.${f.container ?: defaultContainer}",
             logoUrl = streamIcon.ifBlank { null },
             posterUrl = if (mediaType != MediaType.LIVE) streamIcon.ifBlank { null } else null,
-            categoryId = categoryId,
-            categoryName = categoryName,
+            categoryId = resolveCategoryId(f),
+            categoryName = categoryNameOf(f),
             mediaType = mediaType,
-            rating = rating.ifBlank { null },
-            year = year.ifBlank { null },
+            rating = f.rating?.ifBlank { null },
+            year = f.year?.ifBlank { null },
             // A panel that advertises the archive but reports 0 days kept has nothing to
             // play back, so it doesn't count as catch-up capable.
             tvArchive = hasArchive && archiveDays > 0,
@@ -409,42 +398,32 @@ class XtreamClient(private val client: OkHttpClient) {
             // Panels send the TMDB id and a YouTube trailer key on the bulk VOD list itself.
             // Both were being thrown away and then guessed back from the title via a TMDB
             // search - see Channel.tmdbId. "0" is how a panel spells "I don't have one".
-            tmdbId = obj.optString("tmdb", "").takeIf { it.isNotBlank() && it != "0" },
-            trailerKey = youtubeKey(obj.optString("trailer", ""))
+            tmdbId = f.tmdb?.takeIf { it.isNotBlank() && it != "0" },
+            trailerKey = youtubeKey(f.trailer.orEmpty())
         )
     }
 
-    private fun parseSeriesItem(obj: JSONObject): Channel? {
-        val seriesId = obj.optString("series_id", "")
+    private fun parseSeriesItem(f: ItemFields): Channel? {
+        val seriesId = f.seriesId.orEmpty()
         if (seriesId.isBlank()) return null
-        val name = obj.optString("name", "Unknown")
-        val cover = obj.optString("cover", "")
-        val categoryId = resolveCategoryId(obj)
-        // optString returns the literal "null" for a JSON null value on Android, not "" - treat
-        // that as absent so it doesn't become a category row named "null".
-        val categoryName = obj.optString("category_name", "").let { if (it == "null") "" else it }
-        val rating = obj.optString("rating", "")
-        val year = obj.optString("year", "")
-        // Bulk get_series actually carries a real release date (unlike movies, which
-        // only expose one per-item) - confirmed against a live provider.
-        val releaseDate = obj.optString("releaseDate", obj.optString("release_date", ""))
+        val cover = f.cover.orEmpty()
         return Channel(
             id = seriesId,
-            name = name,
+            name = f.name ?: "Unknown",
             url = "",
             logoUrl = cover.ifBlank { null },
             posterUrl = cover.ifBlank { null },
-            categoryId = categoryId,
-            categoryName = categoryName,
+            categoryId = resolveCategoryId(f),
+            categoryName = categoryNameOf(f),
             mediaType = MediaType.SERIES,
-            rating = rating.ifBlank { null },
-            year = year.ifBlank { null },
-            releaseDate = releaseDate.ifBlank { null },
+            rating = f.rating?.ifBlank { null },
+            year = f.year?.ifBlank { null },
+            // Bulk get_series actually carries a real release date (unlike movies, which
+            // only expose one per-item) - confirmed against a live provider.
+            releaseDate = (f.releaseDate ?: f.releaseDateSnake ?: "").ifBlank { null },
             // Same as VOD, except the series list spells the trailer field `youtube_trailer`.
-            tmdbId = obj.optString("tmdb", "").takeIf { it.isNotBlank() && it != "0" },
-            trailerKey = youtubeKey(
-                obj.optString("youtube_trailer", "").ifBlank { obj.optString("trailer", "") }
-            )
+            tmdbId = f.tmdb?.takeIf { it.isNotBlank() && it != "0" },
+            trailerKey = youtubeKey(f.youtubeTrailer.orEmpty().ifBlank { f.trailer.orEmpty() })
         )
     }
 
@@ -529,4 +508,198 @@ class XtreamClient(private val client: OkHttpClient) {
             null
         }
     }
+
+    /**
+     * A bulk list (`get_live_streams`, `get_vod_streams`, `get_series`), streamed item by item
+     * instead of going through [fetchJson] (perf plan C3). A big panel's list is tens of MB, and
+     * fetchJson held it three times over at its peak - the bytes, a UTF-16 String twice their
+     * size, and an org.json tree of maps and boxed values - which is where the OOMs on large
+     * panels came from. Here only the finished channels accumulate.
+     *
+     * Reads the same shapes fetchJson + optJSONArray did: a bare array at the root, or an object
+     * holding the list under [arrayKey] (preferred) or "items"; entries that aren't objects are
+     * skipped. Lenient, like org.json's tokenizer. Null on any failure with the same logging -
+     * a malformed body yields no channels, never a partial list.
+     */
+    private fun fetchItems(url: String, arrayKey: String, parse: (ItemFields) -> Channel?): List<Channel>? {
+        return try {
+            val request = Request.Builder().url(url)
+                .header("User-Agent", "Lumora/1.0")
+                .header("Accept", "application/json, text/plain, */*")
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    lastFetchError = "Server returned HTTP ${response.code}"
+                    Log.w(TAG, "HTTP ${response.code} for $url")
+                    return@use null
+                }
+                // charStream() honours a BOM and the declared charset, as body.string() did.
+                val text = response.body?.charStream()?.buffered() ?: return@use null
+                if (!skipToContent(text)) {
+                    lastFetchError = "Server returned an empty response"
+                    Log.w(TAG, "Empty response body")
+                    return@use null
+                }
+                try {
+                    readItemList(JsonReader(text).apply { isLenient = true }, arrayKey, parse)
+                } catch (e: MalformedJsonException) {
+                    Log.w(TAG, "Invalid JSON response: ${e.message}")
+                    null
+                } catch (e: RuntimeException) {
+                    // IllegalStateException / NumberFormatException: valid tokens, wrong shape.
+                    Log.w(TAG, "Invalid JSON response: ${e.message}")
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            lastFetchError = e.message ?: e.javaClass.simpleName
+            Log.w(TAG, "Network error fetching $url: ${e.message}")
+            null
+        }
+    }
+
+    /** Skips leading whitespace; false when nothing follows it (a blank body). */
+    private fun skipToContent(reader: java.io.BufferedReader): Boolean {
+        while (true) {
+            reader.mark(1)
+            val c = reader.read()
+            if (c < 0) return false
+            if (!c.toChar().isWhitespace()) {
+                reader.reset()
+                return true
+            }
+        }
+    }
+
+    private fun readItemList(reader: JsonReader, arrayKey: String, parse: (ItemFields) -> Channel?): List<Channel>? {
+        val fields = ItemFields()
+        return when (reader.peek()) {
+            JsonToken.BEGIN_ARRAY -> readItems(reader, fields, parse)
+            JsonToken.BEGIN_OBJECT -> {
+                var keyed: List<Channel>? = null
+                var items: List<Channel>? = null
+                reader.beginObject()
+                while (reader.hasNext()) {
+                    // A repeated key replaces the earlier value, array or not, as org.json's put did.
+                    when (reader.nextName()) {
+                        arrayKey -> keyed = readItemsOrNull(reader, fields, parse)
+                        "items" -> items = readItemsOrNull(reader, fields, parse)
+                        else -> reader.skipValue()
+                    }
+                }
+                keyed ?: items
+            }
+            else -> throw IllegalStateException("Expected an object or array, got ${reader.peek()}")
+        }
+    }
+
+    private fun readItemsOrNull(reader: JsonReader, fields: ItemFields, parse: (ItemFields) -> Channel?): List<Channel>? =
+        if (reader.peek() == JsonToken.BEGIN_ARRAY) readItems(reader, fields, parse) else { reader.skipValue(); null }
+
+    private fun readItems(reader: JsonReader, fields: ItemFields, parse: (ItemFields) -> Channel?): List<Channel> {
+        val out = ArrayList<Channel>()
+        reader.beginArray()
+        while (reader.hasNext()) {
+            if (reader.peek() != JsonToken.BEGIN_OBJECT) {
+                reader.skipValue()
+                continue
+            }
+            fields.read(reader)
+            parse(fields)?.let { out.add(it) }
+        }
+        reader.endArray()
+        return out
+    }
+
+    /**
+     * The fields of one list entry, reused for every entry. Null means the key was absent. The
+     * values that repeat across a whole list (category id and name, rating, year, container) go
+     * through a per-list pool, so 30k channels share a few hundred strings instead of each
+     * holding its own copy for as long as the catalogue is in memory.
+     */
+    private class ItemFields {
+        var streamId: String? = null
+        var seriesId: String? = null
+        var name: String? = null
+        var streamIcon: String? = null
+        var cover: String? = null
+        var categoryId: String? = null
+        var firstCategoryIdsEntry: String? = null
+        var categoryName: String? = null
+        var rating: String? = null
+        var year: String? = null
+        var container: String? = null
+        var tvArchive: String? = null
+        var tvArchiveDuration: String? = null
+        var tmdb: String? = null
+        var trailer: String? = null
+        var youtubeTrailer: String? = null
+        var releaseDate: String? = null
+        var releaseDateSnake: String? = null
+        private val pool = HashMap<String, String>()
+
+        private fun pooled(value: String?): String? = value?.let { pool.getOrPut(it) { it } }
+
+        fun read(reader: JsonReader) {
+            streamId = null; seriesId = null; name = null; streamIcon = null; cover = null
+            categoryId = null; firstCategoryIdsEntry = null; categoryName = null; rating = null
+            year = null; container = null; tvArchive = null; tvArchiveDuration = null; tmdb = null
+            trailer = null; youtubeTrailer = null; releaseDate = null; releaseDateSnake = null
+            reader.beginObject()
+            while (reader.hasNext()) {
+                // Assigned on every occurrence, so a repeated key's last value wins, as in org.json.
+                when (reader.nextName()) {
+                    "stream_id" -> streamId = reader.scalar()
+                    "series_id" -> seriesId = reader.scalar()
+                    "name" -> name = reader.scalar()
+                    "stream_icon" -> streamIcon = reader.scalar()
+                    "cover" -> cover = reader.scalar()
+                    "category_id" -> categoryId = pooled(reader.scalar())
+                    "category_ids" -> firstCategoryIdsEntry = pooled(reader.firstCategoryId())
+                    "category_name" -> categoryName = pooled(reader.scalar())
+                    "rating" -> rating = pooled(reader.scalar())
+                    "year" -> year = pooled(reader.scalar())
+                    "container_extension" -> container = pooled(reader.scalar())
+                    "tv_archive" -> tvArchive = reader.scalar()
+                    "tv_archive_duration" -> tvArchiveDuration = reader.scalar()
+                    "tmdb" -> tmdb = reader.scalar()
+                    "trailer" -> trailer = reader.scalar()
+                    "youtube_trailer" -> youtubeTrailer = reader.scalar()
+                    "releaseDate" -> releaseDate = reader.scalar()
+                    "release_date" -> releaseDateSnake = reader.scalar()
+                    else -> reader.skipValue()
+                }
+            }
+            reader.endObject()
+        }
+    }
+}
+
+/**
+ * A value as org.json's optString rendered it, which the parse rules were written against:
+ * strings as-is, numbers as their text, booleans as "true"/"false", JSON null as "null". A
+ * nested object or array reads as absent - org.json serialised it back to JSON text, which no
+ * field here can use.
+ */
+private fun JsonReader.scalar(): String? = when (peek()) {
+    JsonToken.STRING, JsonToken.NUMBER -> nextString()
+    JsonToken.BOOLEAN -> nextBoolean().toString()
+    JsonToken.NULL -> { nextNull(); "null" }
+    else -> { skipValue(); null }
+}
+
+/** First usable entry of a `category_ids` array; null when the value isn't an array or has none. */
+private fun JsonReader.firstCategoryId(): String? {
+    if (peek() != JsonToken.BEGIN_ARRAY) {
+        skipValue()
+        return null
+    }
+    var first: String? = null
+    beginArray()
+    while (hasNext()) {
+        val v = scalar()
+        if (first == null && v != null && v.isNotBlank() && v != "null") first = v
+    }
+    endArray()
+    return first
 }

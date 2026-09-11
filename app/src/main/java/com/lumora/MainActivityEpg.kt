@@ -157,7 +157,7 @@ internal fun MainActivity.ensurePreviewPlayer(): PlayerManager {
 
 internal fun MainActivity.showLivePreviewPane() {
     if (liveChannels.isEmpty()) return
-    binding.livePreviewGutter.visibility = View.VISIBLE
+    binding.liveBand.visibility = View.VISIBLE
     binding.livePreviewPane.visibility = View.VISIBLE
     // releaseLivePreview() hides this surface (not just its parent) to stop a stale
     // frame compositing; nothing brought it back, so the pane reopened permanently
@@ -165,34 +165,44 @@ internal fun MainActivity.showLivePreviewPane() {
     // the pane is being shown, rather than at the tail of release().
     binding.previewSurface.visibility = View.VISIBLE
     ensurePreviewPlayer().setTextureView(binding.previewSurface)
-    binding.liveContent.post { updateGuideRowWrap() }
 }
 
-/** The preview pane floats over the top-right corner of the guide instead of reserving
- *  a permanent column, so rows read like text wrapping around it: whichever rows are
- *  currently scrolled behind it get a right-side margin to clear it, every row below
- *  goes back to full width. Recomputed on scroll and whenever a row is (re)bound, since
- *  which channel occupies "behind the preview" changes as the guide scrolls. */
+/** Sizes the preview from the guide area's own height rather than a fixed dp size: a 16:9
+ *  video about a third of the height tall. A bigger screen then gets a bigger preview and
+ *  more guide rows at once, and a small one keeps most of its height for the guide. Capped
+ *  at half the width so a portrait phone still has room for the programme text beside it. */
+internal fun MainActivity.sizeLiveBand() {
+    val column = binding.liveGuideColumn
+    val width = column.width - column.paddingLeft - column.paddingRight
+    if (width <= 0 || column.height <= 0) return
+    val videoWidth = minOf(column.height * 0.36f * 16 / 9, width / 2f).toInt()
+    val videoHeight = videoWidth * 9 / 16
+    val frame = binding.previewFrame
+    val lp = frame.layoutParams
+    if (lp.width == videoWidth && lp.height == videoHeight) return
+    lp.width = videoWidth
+    lp.height = videoHeight
+    // Posted: this runs from a layout listener, and a layout request made during a layout
+    // pass is only honoured on the next one.
+    frame.post { frame.layoutParams = lp }
+}
 
-internal fun MainActivity.updateGuideRowWrap() {
-    val showingPreview = binding.livePreviewGutter.visibility == View.VISIBLE
-    val reservedPx = if (showingPreview) {
-        // The pane's real on-screen width, exactly - no added buffer. An extra margin
-        // here was tried twice (first 16dp, then 32dp) to guard against focus-scale
-        // bleed that turned out not to be the real bug, and each just left a visible
-        // gap between a reserved row's content and the pane's actual left edge.
-        binding.livePreviewPane.getGlobalVisibleRect(previewGlobalRect)
-        previewGlobalRect.width()
-    } else 0
-    for (i in 0 until binding.liveContent.childCount) {
-        val child = binding.liveContent.getChildAt(i)
-        val overlapsPreview = showingPreview && run {
-            child.getGlobalVisibleRect(guideRowGlobalRect)
-            guideRowGlobalRect.bottom > previewGlobalRect.top && guideRowGlobalRect.top < previewGlobalRect.bottom
-        }
-        (binding.liveContent.getChildViewHolder(child) as? LiveGuideAdapter.RowViewHolder)
-            ?.setReservedEnd(if (overlapsPreview) reservedPx else 0)
-    }
+/** Fills the band beside the preview with what the focused guide cell is about: the programme
+ *  itself when focus is on a programme block ([program] set), otherwise what the channel is
+ *  showing now. Reads the programmes the guide row already fetched and never fetches itself. */
+internal fun MainActivity.showGuideDetails(channel: Channel, program: XtreamClient.EpgProgram?) {
+    val programs = EpgListCache.get(channel.id).orEmpty()
+    val nowSeconds = System.currentTimeMillis() / 1000
+    val shown = program ?: programs.firstOrNull { it.isNowAiring(nowSeconds) }
+    val next = if (shown != null) programs.firstOrNull { it.startTimestamp >= shown.stopTimestamp }
+    else programs.firstOrNull { it.startTimestamp > nowSeconds }
+    binding.liveBandChannel.text = channel.name
+    // Blank while the row's fetch is still out, same as the guide row itself: "No programme
+    // info" flashing for the 200ms before the schedule lands reads as a glitch.
+    binding.liveBandTitle.text = shown?.title
+        ?: if (EpgListCache.has(channel.id)) getString(R.string.list_no_programme_info) else ""
+    binding.liveBandTime.text = shown?.let { formatEpgTimeRange(it.startTimestamp, it.stopTimestamp) }.orEmpty()
+    binding.liveBandNext.text = next?.let { getString(R.string.list_next_program, it.title) }.orEmpty()
 }
 
 internal fun MainActivity.releaseLivePreview() {
@@ -201,9 +211,8 @@ internal fun MainActivity.releaseLivePreview() {
     previewChannelId = null
     previewTargetChannel = null
     mainHandler.removeCallbacks(previewBlackFrameCheckRunnable)
-    binding.livePreviewGutter.visibility = View.GONE
+    binding.liveBand.visibility = View.GONE
     binding.livePreviewPane.visibility = View.GONE
-    updateGuideRowWrap()
     // A hardware-overlay SurfaceView can keep compositing its last frame even
     // after the Java view tree is hidden; explicitly stop playback and hide the
     // surface itself (not just its parent) so it actually goes away.
@@ -351,6 +360,9 @@ internal fun MainActivity.loadPreview(channel: Channel) {
     previewBlackFrameStreak = 0
     previewChannelId = channel.id
     binding.previewChannelName.text = channel.name
+    // The preview starts (on opening Live TV, back from the player) while focus is still in
+    // the sidebar, so no guide row has filled the band yet: describe what is playing.
+    if (binding.liveContent.focusedChild == null) showGuideDetails(channel, null)
     binding.previewBuffering.visibility = View.VISIBLE
     previewVersionGroup = liveVersions[channel.id] ?: listOf(channel)
     previewVersionIndex = previewVersionGroup.indexOfFirst { !isStreamDead(it) }.takeIf { it >= 0 } ?: 0

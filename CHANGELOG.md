@@ -3,12 +3,15 @@
 ## Unreleased
 
 ### Performance
+- **Large Xtream providers load with a fraction of the memory.** Refreshing a provider used to hold its entire channel list in memory several times over while reading it, which on providers with tens of thousands of channels could run a 1 GB Fire TV stick out of memory. Lumora now reads the list as it downloads and keeps only the channels, so a refresh is faster and far less likely to fail on big providers.
 - **Opening Lumora with a large catalogue is quicker and lighter on memory.** Reading the saved channel list back on startup created a pile of throwaway data for every channel, and kept a separate copy of the same group and category names for each of thousands of channels. It now reads each line in one pass and shares those names, so the list loads in about half the time and the app holds noticeably less memory for as long as it runs - which matters most on older Fire TV sticks.
 
 ### Playlists
 - **Large M3U playlists load much faster.** Reading each entry's details (name, logo, group) redid expensive setup work for every single line, so a playlist with tens of thousands of entries spent most of its load time on that instead of on your channels. That work now happens once, and loading also creates far less temporary data, which older Fire TV sticks were spending extra time cleaning up.
 
 ### Live TV
+- **The TV guide and the preview no longer cover each other.** The preview used to float over the top of the guide, hiding the upcoming programmes of every channel behind it. It now sits in its own band above the guide, next to the title, time and what's on next for whatever you have selected. The band scales with your screen, so a bigger TV shows a bigger preview and more channels at once. Clicking the preview opens that channel fullscreen, channels whose schedule is still loading show placeholder blocks instead of empty boxes, and scrolling down no longer draws the top channel over the time bar.
+- **Channels with Dolby audio have sound on phones and Android boxes.** Many channels, French ones especially, broadcast their sound in Dolby Digital (AC-3) or Dolby Digital Plus, and devices without a built-in Dolby decoder played them silent or refused to start them. Lumora now carries its own decoder for these formats and uses it only when the device can't decode them itself, so Fire TV and other devices with Dolby support keep using their own (including passthrough to a receiver).
 - **Live channels play on Xtream providers that have HLS switched off.** Lumora always asked for live channels in HLS format, and panels that don't offer it refused every request, so no live channel would start. Lumora now checks which formats your account allows and falls back to MPEG-TS when HLS isn't one of them. Your channel list refreshes once after updating to pick this up.
 
 ## 4.5.1

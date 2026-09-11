@@ -83,6 +83,14 @@ class AvOffsetRenderersFactory(
     context: Context,
     private val offsetUsProvider: () -> Long,
 ) : DefaultRenderersFactory(context) {
+    init {
+        // Extension renderers (the FFmpeg audio decoder) go *after* the platform ones, so the
+        // device's own MediaCodec - and on a TV, Dolby passthrough to the receiver - always wins,
+        // and software decoding only takes a track no platform decoder supports (AC-3 on a phone
+        // without a Dolby licence). PREFER would put FFmpeg first everywhere.
+        setExtensionRendererMode(EXTENSION_RENDERER_MODE_ON)
+    }
+
     override fun buildVideoRenderers(
         context: Context,
         extensionRendererMode: Int,

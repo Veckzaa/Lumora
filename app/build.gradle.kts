@@ -152,11 +152,18 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.9.3")
 
     // Media3 ExoPlayer - hardware-accelerated video playback
-    implementation("androidx.media3:media3-exoplayer:1.4.1")
-    implementation("androidx.media3:media3-exoplayer-hls:1.4.1")
-    implementation("androidx.media3:media3-exoplayer-dash:1.4.1")
-    implementation("androidx.media3:media3-exoplayer-rtsp:1.4.1")
-    implementation("androidx.media3:media3-ui:1.4.1")
+    implementation("androidx.media3:media3-exoplayer:1.5.0")
+    implementation("androidx.media3:media3-exoplayer-hls:1.5.0")
+    implementation("androidx.media3:media3-exoplayer-dash:1.5.0")
+    implementation("androidx.media3:media3-exoplayer-rtsp:1.5.0")
+    implementation("androidx.media3:media3-ui:1.5.0")
+    // Software audio decoders (FFmpeg) for AC-3 / E-AC-3 and friends, used only when the device
+    // has no decoder of its own (see AvOffsetRenderersFactory). Many live channels, French ones
+    // especially, carry Dolby audio, and phones and cheap boxes without a Dolby licence played
+    // them silent or failed with NO_UNSUPPORTED_TYPE. Fire TV decodes Dolby itself, so this never
+    // runs there. Google doesn't publish the FFmpeg extension; Jellyfin's build is on Maven Central
+    // and must match the media3 version exactly - bump both together. ~1.4 MB of .so per ABI.
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.5.0+1")
 
     // UI
     implementation("androidx.recyclerview:recyclerview:1.3.2")
@@ -239,7 +246,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-cast-framework:21.5.0")
 
     // Media session / browse tree - what Android Auto's media category binds to (auto/).
-    implementation("androidx.media3:media3-session:1.4.1")
+    implementation("androidx.media3:media3-session:1.5.0")
 
     // Android Auto (see auto/ - CarAppService).
     implementation("androidx.car.app:app:1.7.0")

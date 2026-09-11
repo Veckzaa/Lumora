@@ -10,11 +10,12 @@ import com.lumora.player.ExternalPlayer
 
 // ── External playback hand-off ──────────────────
 //
-// Some formats the app cannot play are formats the *device* cannot play: a stick with no
-// Dolby licence has no AC3/E-AC3 MediaCodec, so those streams run with picture and silence
-// and ExoPlayer reports nothing wrong - an unsupported track is unsupported, not failed.
-// Shipping software decoders fixes it and costs tens of megabytes of FFmpeg per ABI; VLC and
-// friends already carry that on the same device, so the stream is handed over instead.
+// Some formats the app cannot play are formats the *device* cannot play: a device with no
+// Dolby licence has no AC3/E-AC3 MediaCodec, so those streams ran with picture and silence
+// and ExoPlayer reported nothing wrong - an unsupported track is unsupported, not failed.
+// The bundled FFmpeg audio decoder (a fallback, see AvOffsetRenderersFactory) now covers the
+// Dolby formats; the hand-off remains for what its build leaves out (DTS) and for hard
+// playback errors, which VLC and friends may still get through.
 //
 // Two ways in: the OPEN IN button in the player controls, and an offer that appears by itself
 // when the app detects it cannot do the job (audio it has no decoder for, or a hard playback

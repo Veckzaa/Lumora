@@ -917,7 +917,10 @@ class MainActivity : AppCompatActivity() {
 
     internal val liveAdapter = LiveGuideAdapter(
         onChannelClick = { channel -> onChannelOkPress(channel) },
-        onChannelFocused = { channel -> lastFocusedLiveChannel = channel },
+        onChannelFocused = { channel, program ->
+            lastFocusedLiveChannel = channel
+            showGuideDetails(channel, program)
+        },
         onChannelLongPress = { channel -> toggleFavoriteChannel(channel) },
         onChannelFavClick = { channel -> toggleFavoriteChannel(channel) },
         isChannelFavourite = { id -> FavoritesStore.getFavoriteChannelIds(this).contains(id) },
@@ -2158,9 +2161,6 @@ class MainActivity : AppCompatActivity() {
     )
 
     internal var lastFocusedLiveChannel: Channel? = null
-
-    internal val previewGlobalRect = android.graphics.Rect()
-    internal val guideRowGlobalRect = android.graphics.Rect()
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
         super.onActivityResult(requestCode, resultCode, data)

@@ -14,8 +14,6 @@
     <dimen name="category_sidebar_width">176dp</dimen>
     <dimen name="category_row_padding_horizontal">6dp</dimen>
     <integer name="category_row_max_lines">3</integer>
-    <dimen name="live_preview_width">140dp</dimen>
-    <dimen name="live_preview_height">79dp</dimen>
     <dimen name="guide_channel_column_width">150dp</dimen>
 
     <!-- Toolbar: 20dp of padding either side plus a labelled search button and two 48dp icon

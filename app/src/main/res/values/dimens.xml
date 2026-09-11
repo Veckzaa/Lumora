@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- TV/landscape defaults - plenty of width to spare for a persistent sidebar + overlay preview. -->
+    <!-- TV/landscape defaults - plenty of width to spare for a persistent sidebar. -->
     <dimen name="category_sidebar_width">190dp</dimen>
-    <dimen name="live_preview_width">240dp</dimen>
-    <dimen name="live_preview_height">126dp</dimen>
     <!-- Widened from 170dp for ~8 more characters of channel name. The name renders at
          guide_channel_name_text (9sp here) in Inter Medium, whose average advance is roughly
          0.6em for the upper-case/digit-heavy names providers actually ship - so 8 characters

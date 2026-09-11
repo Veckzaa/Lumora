@@ -27,6 +27,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val FILLER_MINUTES = 30
+// Placeholder programme lengths while a row's schedule loads, rotated per channel so the
+// loading rows don't line up into a grid that reads as real, identical programmes.
+private val SKELETON_MINUTES = intArrayOf(45, 30, 60, 30, 45)
 private const val NOW_NEXT_SEPARATOR = " · "
 // Fast D-pad/fling scrolling flies a row past in well under this time; waiting this
 // long before firing its network fetch means rows that never settle never cost a
@@ -55,7 +58,8 @@ private class BlockState {
 /** TiviMate-style TV guide: fixed channel column + horizontally-scrolling EPG timeline per row. */
 class LiveGuideAdapter(
     private val onChannelClick: (Channel) -> Unit,
-    private val onChannelFocused: ((Channel) -> Unit)? = null,
+    /** The programme is the focused block's, or null when focus is on the channel column. */
+    private val onChannelFocused: ((Channel, XtreamClient.EpgProgram?) -> Unit)? = null,
     private val onChannelLongPress: ((Channel) -> Unit)? = null,
     private val onChannelFavClick: ((Channel) -> Unit)? = null,
     private val onProgramLongPress: ((Channel, XtreamClient.EpgProgram) -> Unit)? = null,
@@ -163,7 +167,7 @@ class LiveGuideAdapter(
             channelInfo.setOnClickListener { current?.let(onChannelClick) }
             channelInfo.setOnLongClickListener { current?.let { onChannelLongPress?.invoke(it) }; true }
             channelInfo.setOnFocusChangeListener { _, hasFocus ->
-                if (hasFocus) current?.let { onChannelFocused?.invoke(it) }
+                if (hasFocus) current?.let { onChannelFocused?.invoke(it, null) }
                 // Focused rows fold the next program into the now line; losing focus
                 // (including to a program block) drops back to current-only.
                 updateNowLine()
@@ -173,7 +177,7 @@ class LiveGuideAdapter(
             // focusing the channel column (preview pane follows, now/next line stays) rather
             // than reading as "left the channel".
             favStar.setOnFocusChangeListener { _, hasFocus ->
-                if (hasFocus) current?.let { onChannelFocused?.invoke(it) }
+                if (hasFocus) current?.let { onChannelFocused?.invoke(it, null) }
                 updateNowLine()
             }
             // LEFT from the channel column must land on this row's star, not fall through to
@@ -207,17 +211,6 @@ class LiveGuideAdapter(
          *  leaving the guide sitting there unfocused until the user presses something. */
         fun requestChannelFocus() {
             channelInfo.requestFocus()
-        }
-
-        /** Reserves [px] of end margin so this row's content clears the floating preview
-         *  pane - 0 once the row is no longer behind it. Driven by MainActivity's
-         *  updateGuideRowWrap(), which knows the preview's on-screen position. */
-        fun setReservedEnd(px: Int) {
-            val lp = itemView.layoutParams as? ViewGroup.MarginLayoutParams ?: return
-            if (lp.marginEnd != px) {
-                lp.marginEnd = px
-                itemView.layoutParams = lp
-            }
         }
 
         fun bind(channel: Channel) {
@@ -341,14 +334,20 @@ class LiveGuideAdapter(
         }
 
         private fun renderPrograms(channel: Channel, programs: List<XtreamClient.EpgProgram>?, pending: Boolean = false) {
-            val blocks: List<RenderBlock> = if (programs.isNullOrEmpty()) {
+            val blocks: List<RenderBlock> = if (pending) {
+                // Fetch still out: skeleton blocks rather than "No programme info", which
+                // flashing for 200ms before data lands reads as the guide glitching.
+                val rotation = (channel.id.hashCode() and 0x7fffffff) % SKELETON_MINUTES.size
+                SKELETON_MINUTES.indices.map { i ->
+                    val minutes = SKELETON_MINUTES[(i + rotation) % SKELETON_MINUTES.size]
+                    RenderBlock("", (minutes * MINUTE_WIDTH_DP * density).toInt(), false, null)
+                }
+            } else if (programs.isNullOrEmpty()) {
                 // No EPG data for this channel - a single filler block keeps the row
                 // clickable and visually aligned with rows that do have data. Repeating
                 // the channel's own name here just reads as duplicated text right next
-                // to the name column, so use a neutral label instead. While a fetch is
-                // still pending the block stays blank - flashing "No programme info" for
-                // 200ms before data lands reads as the guide glitching.
-                listOf(RenderBlock(if (pending) "" else itemView.context.getString(R.string.list_no_programme_info), (FILLER_MINUTES * MINUTE_WIDTH_DP * density).toInt(), false, null))
+                // to the name column, so use a neutral label instead.
+                listOf(RenderBlock(itemView.context.getString(R.string.list_no_programme_info), (FILLER_MINUTES * MINUTE_WIDTH_DP * density).toInt(), false, null))
             } else {
                 val nowSeconds = System.currentTimeMillis() / 1000
                 programs.map { program ->
@@ -386,6 +385,7 @@ class LiveGuideAdapter(
                 state.program = program
                 val reminderSet = program != null && program.startTimestamp > nowSeconds && isReminderSet("${channel.id}:${program.startTimestamp}")
                 val backgroundRes = when {
+                    pending -> R.drawable.bg_guide_block_skeleton
                     reminderSet -> R.drawable.bg_guide_block_reminder
                     isCurrent -> R.drawable.bg_guide_block_current
                     else -> R.drawable.bg_guide_block
@@ -410,6 +410,9 @@ class LiveGuideAdapter(
             // is exactly what keeps a recycled row's line from going stale.
             lastPrograms = programs
             updateNowLine()
+            // The band above the guide describes the focused row. A schedule that lands after
+            // focus did has to reach it too, or the band stays blank for a channel it now knows.
+            if (channelInfo.isFocused || favStar.isFocused) onChannelFocused?.invoke(channel, null)
         }
 
         /** Fills guideChannelNow from the row's already-fetched EPG. Unfocused rows show
@@ -480,8 +483,8 @@ class LiveGuideAdapter(
                 // D-pad RIGHT off the channel column moves focus into these program blocks -
                 // without this, the preview pane only ever updated while focus sat on the
                 // channel name itself and otherwise went stale/blank while browsing the guide.
-                setOnFocusChangeListener { _, hasFocus ->
-                    if (hasFocus) current?.let { onChannelFocused?.invoke(it) }
+                setOnFocusChangeListener { view, hasFocus ->
+                    if (hasFocus) current?.let { onChannelFocused?.invoke(it, (view.tag as BlockState).program) }
                 }
                 setOnLongClickListener { view ->
                     val channel = current

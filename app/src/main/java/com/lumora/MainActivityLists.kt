@@ -370,13 +370,9 @@ internal fun MainActivity.buildGuideHeader() {
 
 internal fun MainActivity.setupChannelList() {
     binding.liveContent.layoutManager = LinearLayoutManager(this)
-    binding.liveContent.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) { updateGuideRowWrap() }
-    })
-    binding.liveContent.addOnChildAttachStateChangeListener(object : RecyclerView.OnChildAttachStateChangeListener {
-        override fun onChildViewAttachedToWindow(view: View) { binding.liveContent.post { updateGuideRowWrap() } }
-        override fun onChildViewDetachedFromWindow(view: View) {}
-    })
+    binding.liveGuideColumn.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> sizeLiveBand() }
+    // Same as the second OK on a channel: the previewed channel goes fullscreen.
+    binding.livePreviewPane.setOnClickListener { previewTargetChannel?.let { playItem(it) } }
     binding.seriesContent.layoutManager = LinearLayoutManager(this)
     binding.filmsContent.layoutManager = LinearLayoutManager(this)
     binding.categorySidebar.layoutManager = LinearLayoutManager(this)

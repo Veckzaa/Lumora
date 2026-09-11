@@ -1055,9 +1055,9 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1">
 
-                <!-- Live TV row: full-width guide, preview pane floats on top of it in
-                     the top-right corner instead of reserving a permanent side column -
-                     the guide's program columns now run full width all the way down. -->
+                <!-- Live TV: two sections stacked, a band (focused programme + preview) above a
+                     full-width guide. The preview used to float over the guide's top-right
+                     corner, which hid the upcoming programmes of every row behind it. -->
                 <FrameLayout
                     android:id="@+id/liveRow"
                     android:layout_width="match_parent"
@@ -1066,33 +1066,134 @@
                     android:clipToPadding="false"
                     android:visibility="visible">
 
-                    <!-- Guide runs full width by default; the preview pane floats on top in the
-                         top-right corner instead of reserving a permanent side column. Rows
-                         that are actually behind the preview get a right-side reservation added
-                         at runtime (see updateGuideRowWrap() in MainActivity) so the guide reads
-                         as text wrapping around the preview - narrow while a row overlaps it,
-                         full width again for every row below it. -->
-                    <!-- clipChildren/clipToPadding false: liveContent's rows are flush with
-                         this layout's content box, so the focused channel-info card's 1.06x
-                         scale-up grew straight into the 16dp padding and got clipped - the
-                         focus stroke lost its left edge entirely. The RecyclerView already
-                         disabled both flags; without them here too, its parent clipped what
-                         it had allowed through. -->
                     <LinearLayout
                         android:id="@+id/liveGuideColumn"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:clipChildren="false"
-                        android:clipToPadding="false"
-                        android:orientation="vertical"
-                        android:paddingHorizontal="16dp">
+                        android:orientation="vertical">
+
+                        <!-- The band: what the focused guide cell is about on the left, the
+                             preview on the right. Shown and hidden with the preview
+                             (showLivePreviewPane / releaseLivePreview); previewFrame's size is
+                             set from the screen's height by sizeLiveBand(). Only the preview
+                             takes focus (clicking it opens the channel fullscreen); it sits at
+                             the right, so UP from the channel column still reaches the tabs. -->
+                        <LinearLayout
+                            android:id="@+id/liveBand"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="16dp"
+                            android:layout_marginTop="4dp"
+                            android:layout_marginBottom="8dp"
+                            android:orientation="horizontal"
+                            android:visibility="gone">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="16dp"
+                                android:layout_weight="1"
+                                android:gravity="center_vertical"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/liveBandChannel"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:ellipsize="end"
+                                    android:fontFamily="@font/inter_medium"
+                                    android:maxLines="1"
+                                    android:textColor="@color/text_secondary"
+                                    android:textSize="@dimen/text_body_s" />
+
+                                <TextView
+                                    android:id="@+id/liveBandTitle"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:ellipsize="end"
+                                    android:fontFamily="@font/inter_semibold"
+                                    android:maxLines="2"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="@dimen/text_title" />
+
+                                <TextView
+                                    android:id="@+id/liveBandTime"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:maxLines="1"
+                                    android:textColor="@color/text_secondary"
+                                    android:textSize="@dimen/text_body_s" />
+
+                                <TextView
+                                    android:id="@+id/liveBandNext"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="8dp"
+                                    android:ellipsize="end"
+                                    android:maxLines="1"
+                                    android:textColor="@color/text_tertiary"
+                                    android:textSize="@dimen/text_body_s" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:id="@+id/livePreviewPane"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/bg_live_preview_frame"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:orientation="vertical"
+                                android:padding="3dp">
+
+                                <FrameLayout
+                                    android:id="@+id/previewFrame"
+                                    android:layout_width="0dp"
+                                    android:layout_height="0dp">
+
+                                    <TextureView
+                                        android:id="@+id/previewSurface"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="match_parent" />
+
+                                    <ProgressBar
+                                        android:id="@+id/previewBuffering"
+                                        android:layout_width="28dp"
+                                        android:layout_height="28dp"
+                                        android:layout_gravity="center"
+                                        android:indeterminate="true"
+                                        android:indeterminateTint="@color/primary"
+                                        android:visibility="gone" />
+
+                                    <!-- The channel in the preview, which is the last one
+                                         OK was pressed on and not necessarily the focused
+                                         one the text beside it describes. -->
+                                    <TextView
+                                        android:id="@+id/previewChannelName"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:layout_gravity="bottom"
+                                        android:ellipsize="end"
+                                        android:maxLines="1"
+                                        android:paddingHorizontal="8dp"
+                                        android:paddingVertical="4dp"
+                                        android:shadowColor="#CC000000"
+                                        android:shadowRadius="4"
+                                        android:textColor="@color/text_primary"
+                                        android:textSize="@dimen/text_body_s"
+                                        android:textStyle="bold" />
+                                </FrameLayout>
+                            </LinearLayout>
+                        </LinearLayout>
 
                         <!-- Guide time ruler: spacer matches the channel-info column width so
                              time labels line up with the program blocks, not the channel names. -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="22dp"
-                            android:orientation="horizontal">
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="16dp">
 
                             <!-- marginEnd matches guideChannelInfo's 10dp end margin in
                                  item_guide_channel_row.xml - without it every time label
@@ -1118,73 +1219,21 @@
                             </HorizontalScrollView>
                         </LinearLayout>
 
-                        <FrameLayout
+                        <!-- Clips its rows (clipChildren left at true): unclipped, a row scrolled
+                             past the top kept drawing over the time ruler. The focused channel
+                             card's 1.06x scale-up still has room, because the side margin is this
+                             list's own padding (drawn into, clipToPadding false) rather than the
+                             column's, and the 4dp top gap is padding rather than margin. -->
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/liveContent"
                             android:layout_width="match_parent"
                             android:layout_height="0dp"
                             android:layout_weight="1"
-                            android:clipChildren="false"
-                            android:clipToPadding="false">
-
-                            <androidx.recyclerview.widget.RecyclerView
-                                android:id="@+id/liveContent"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:layout_marginTop="4dp"
-                                android:clipChildren="false"
-                                android:clipToPadding="false"
-                                android:defaultFocusHighlightEnabled="true"
-                                android:paddingBottom="4dp" />
-
-                            <FrameLayout
-                                android:id="@+id/livePreviewGutter"
-                                android:layout_width="@dimen/live_preview_width"
-                                android:layout_height="wrap_content"
-                                android:layout_gravity="top|end"
-                                android:layout_marginTop="4dp"
-                                android:visibility="gone">
-
-                                <LinearLayout
-                                    android:id="@+id/livePreviewPane"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:layout_gravity="top"
-                                    android:background="@drawable/bg_live_preview_frame"
-                                    android:orientation="vertical"
-                                    android:padding="2dp">
-
-                                <FrameLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="@dimen/live_preview_height">
-
-                                    <TextureView
-                                        android:id="@+id/previewSurface"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="match_parent" />
-
-                                    <ProgressBar
-                                        android:id="@+id/previewBuffering"
-                                        android:layout_width="28dp"
-                                        android:layout_height="28dp"
-                                        android:layout_gravity="center"
-                                        android:indeterminate="true"
-                                        android:indeterminateTint="@color/primary"
-                                        android:visibility="gone" />
-                                </FrameLayout>
-
-                                <TextView
-                                    android:id="@+id/previewChannelName"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginTop="6dp"
-                                    android:ellipsize="end"
-                                    android:gravity="center"
-                                    android:maxLines="1"
-                                    android:textColor="@color/text_primary"
-                                    android:textSize="@dimen/text_body"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-                        </FrameLayout>
-                        </FrameLayout>
+                            android:clipToPadding="false"
+                            android:defaultFocusHighlightEnabled="true"
+                            android:paddingHorizontal="16dp"
+                            android:paddingTop="4dp"
+                            android:paddingBottom="4dp" />
                     </LinearLayout>
                 </FrameLayout>
 
