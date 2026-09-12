@@ -26,6 +26,7 @@ class AppUpdateInstaller(private val context: Context) {
      * Returns the DownloadManager ID for tracking progress.
      */
     fun downloadApk(downloadUrl: String): Long {
+        deleteDownloads()
         val fileName = "Lumora.apk"
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
@@ -92,6 +93,34 @@ class AppUpdateInstaller(private val context: Context) {
             Toast.makeText(context, context.getString(R.string.ui_update_no_app), Toast.LENGTH_LONG).show()
             false
         }
+    }
+
+    private val downloadsDir: File? get() = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+
+    /** The build that was installed before the last update, for Settings > About's rollback. */
+    val previousApk: File? get() = downloadsDir?.let { File(it, PREVIOUS_APK) }?.takeIf { it.isFile }
+
+    /** Every update download except the rollback copy. DownloadManager never reuses a name, so
+     *  each attempt left its own Lumora-N.apk (~27 MB) behind for good; they go before the next
+     *  download and once an update is settled (AppUpdateChecker). */
+    fun deleteDownloads() {
+        downloadsDir?.listFiles { f -> f.name.startsWith("Lumora") && f.name.endsWith(".apk") }?.forEach { it.delete() }
+    }
+
+    /** Copies the APK installed now over the rollback copy - through a temp file, so a copy that
+     *  fails (a full stick) can't leave the last good one half-written. Blocking: tens of MB. */
+    fun keepInstalledAsPrevious(): Boolean {
+        val dir = downloadsDir ?: return false
+        val tmp = File(dir, "$PREVIOUS_APK.tmp")
+        return runCatching {
+            File(context.applicationInfo.sourceDir).copyTo(tmp, overwrite = true)
+            tmp.renameTo(File(dir, PREVIOUS_APK))
+        }.getOrDefault(false)
+    }
+
+    companion object {
+        /** Not "Lumora…": deleteDownloads() must never match it. */
+        private const val PREVIOUS_APK = "previous.apk"
     }
 
     /**

@@ -160,4 +160,12 @@
     <string name="speed_test_nothing">Aucune chaîne en direct à tester</string>
     <string name="speed_test_failed">Échec : %1$s</string>
     <string name="speed_test_no_providers">Aucun fournisseur activé</string>
+
+    <!-- MainActivity.kt - invite de mise à jour, quand la même mise à jour a déjà été tentée -->
+    <string name="update_last_attempt_failed">La dernière tentative ne s\'est pas installée (annulée ou en échec) : elle est proposée à nouveau.</string>
+
+    <!-- MainActivitySettings.kt - À propos : revenir à la version d'avant la dernière mise à jour -->
+    <string name="rollback_to">Revenir à %1$s</string>
+    <string name="rollback">Revenir</string>
+    <string name="rollback_message">Réinstalle la version que vous aviez avant la dernière mise à jour. Vos chaînes et réglages sont conservés. La version plus récente sera proposée à nouveau à la prochaine vérification.</string>
 </resources>

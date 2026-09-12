@@ -1570,12 +1570,32 @@ internal fun MainActivity.showProviderSettings() {
                 info.isUpdateAvailable && info.downloadUrl.isNotBlank() -> {
                     AlertDialog.Builder(this@showProviderSettings)
                         .setTitle(getString(R.string.sett_update_available))
-                        .setMessage(getString(R.string.plug_update_available_message, info.name, info.currentVersion))
+                        .setMessage(updatePromptMessage(info))
                         .setPositiveButton(getString(R.string.update)) { _, _ -> downloadAndInstallUpdate(info.downloadUrl, info.name) }
                         .setNegativeButton(getString(R.string.sett_later), null)
                         .show()
                 }
                 else -> Toast.makeText(this@showProviderSettings, getString(R.string.sett_latest_version), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Rollback: only once an update has kept the build before it, and not while that build is
+    // the one installed (right after a rollback, it would reinstall itself).
+    val previousBuild = AppUpdateChecker.previousName(this)
+    if (previousBuild != null && previousBuild != AppUpdateChecker.installedName(this) &&
+        com.lumora.data.update.AppUpdateInstaller(this).previousApk != null
+    ) {
+        dialogView.findViewById<TextView>(R.id.settingsRollbackUpdateLabel).text = getString(R.string.rollback_to, previousBuild)
+        dialogView.findViewById<View>(R.id.settingsRollbackUpdate).apply {
+            visibility = View.VISIBLE
+            setOnClickListener {
+                AlertDialog.Builder(this@showProviderSettings)
+                    .setTitle(getString(R.string.rollback_to, previousBuild))
+                    .setMessage(getString(R.string.rollback_message))
+                    .setPositiveButton(getString(R.string.rollback)) { _, _ -> rollbackUpdate() }
+                    .setNegativeButton(getString(R.string.cancel), null)
+                    .show()
             }
         }
     }

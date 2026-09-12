@@ -162,4 +162,12 @@
     <string name="speed_test_nothing">No live channel to test</string>
     <string name="speed_test_failed">Failed: %1$s</string>
     <string name="speed_test_no_providers">No provider is enabled</string>
+
+    <!-- MainActivity.kt - update prompt, when the same update was tried before -->
+    <string name="update_last_attempt_failed">The last try didn\'t install (it was cancelled or failed), so it\'s offered again.</string>
+
+    <!-- MainActivitySettings.kt - About: go back to the build before the last update -->
+    <string name="rollback_to">Go back to %1$s</string>
+    <string name="rollback">Go back</string>
+    <string name="rollback_message">Reinstalls the version you had before the last update. Your channels and settings stay. The newer version is offered again at the next update check.</string>
 </resources>

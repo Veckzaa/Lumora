@@ -1423,11 +1423,30 @@ class MainActivity : AppCompatActivity() {
             if (!info.isUpdateAvailable || info.downloadUrl.isBlank()) return@launch
             AlertDialog.Builder(this@MainActivity)
                 .setTitle(getString(R.string.plug_update_available))
-                .setMessage(getString(R.string.plug_update_available_message, info.name, info.currentVersion))
+                .setMessage(updatePromptMessage(info))
                 .setPositiveButton(getString(R.string.update)) { _, _ -> downloadAndInstallUpdate(info.downloadUrl, info.name) }
                 .setNegativeButton(getString(R.string.plug_later), null)
                 .show()
         }
+    }
+
+    /** Settings > About's rollback: the build kept by the last update goes back through the
+     *  installer, and the next check confirms it like any update (AppUpdateChecker.markPending).
+     *  Android refuses it when that build has a lower versionCode - fine between Dropbox builds,
+     *  which share one, not across a release that bumped it. */
+    internal fun rollbackUpdate() {
+        val installer = AppUpdateInstaller(this)
+        val apk = installer.previousApk ?: return
+        val name = AppUpdateChecker.previousName(this) ?: return
+        AppUpdateChecker.markPending(this, name, apk)
+        installer.installApk(apk.path)
+    }
+
+    /** The update prompt's text, saying so when this update was already tried and didn't install -
+     *  otherwise being offered the same update again reads as the updater looping. */
+    internal fun updatePromptMessage(info: AppUpdateChecker.UpdateInfo): String {
+        val message = getString(R.string.plug_update_available_message, info.name, info.currentVersion)
+        return if (info.lastAttemptFailed) message + "\n\n" + getString(R.string.update_last_attempt_failed) else message
     }
 
     /** Downloads the release APK via DownloadManager, then hands it to the system package
@@ -1446,7 +1465,19 @@ class MainActivity : AppCompatActivity() {
                 if (installer.isDownloadComplete(downloadId)) {
                     val path = installer.getDownloadedFilePath(downloadId)
                     if (path != null) {
-                        AppUpdateChecker.markInstalled(this@MainActivity, name)
+                        // The build installed now becomes the rollback copy before the update
+                        // replaces it. Not when the copy already is this build: a retry after a
+                        // cancelled install, or the build a rollback went back to.
+                        val installedName = AppUpdateChecker.installedName(this@MainActivity)
+                        if (installedName != null &&
+                            (installedName != AppUpdateChecker.previousName(this@MainActivity) || installer.previousApk == null) &&
+                            withContext(Dispatchers.IO) { installer.keepInstalledAsPrevious() }
+                        ) {
+                            AppUpdateChecker.setPreviousName(this@MainActivity, installedName)
+                        }
+                        // Pending until the next check sees it installed: cancelling the
+                        // installer, or an install that fails, must not count as updated.
+                        AppUpdateChecker.markPending(this@MainActivity, name, java.io.File(path))
                         // If the user had to be sent to grant "install unknown apps",
                         // installApk() returns false - retry once automatically after
                         // they've had time to flip it, instead of making them come back

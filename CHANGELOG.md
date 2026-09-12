@@ -12,6 +12,8 @@
 
 ### App
 - **Updates come straight from the app.** Lumora checks the published build at start-up (and from Settings → About) and offers to download and install a new one, no sideloading again.
+- **A cancelled update is offered again.** Cancelling the install screen, or an install that failed, used to count as updated, so the app never offered that update again. Lumora now checks on its next start that the update really installed; if it didn't, the update is offered again with a note that the last try didn't go through.
+- **Go back to the previous version.** After an update, Settings → About offers to reinstall the version you had before, in case the new one misbehaves. Old update downloads (about 27 MB each) are also cleaned up instead of piling up on the device.
 - **Half the download on Fire TV.** Lumora now comes as one APK per processor type: the Fire TV Stick build is 20 MB instead of 36 MB, because it no longer carries the playback libraries for three other kinds of processor it can never use. The universal APK is still there for phones.
 - **The top bar always fits on the TV.** When the tabs don't fit on one line (in French, or with Discover shown), Search shrinks to its icon, so Settings and Refresh stay on screen without scrolling.
 - **The highlighted tab's frame is whole again.** Its top edge was cut off when the tab grew on focus.
