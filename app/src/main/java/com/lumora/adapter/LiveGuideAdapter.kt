@@ -396,10 +396,14 @@ class LiveGuideAdapter(
             // Blocks are laid down at `slot`, which lags `i` by the programmes that ended
             // before the timeline's origin and get no block.
             var slot = 0
+            // Where the previous block ended, so a hole in the schedule becomes a gap before
+            // the next block instead of pulling it left of where the ruler says it is.
+            var cursor = origin
             for (i in 0 until count) {
                 val program: XtreamClient.EpgProgram?
                 val title: String
                 val minutes: Long
+                var gapMinutes = 0L
                 val isCurrent: Boolean
                 if (pending) {
                     // Fetch still out: skeleton blocks rather than "No programme info", which
@@ -428,9 +432,13 @@ class LiveGuideAdapter(
                     // every row's timeline starts flush at the same half hour as the ruler.
                     val effectiveStart = maxOf(program.startTimestamp, origin)
                     minutes = ((program.stopTimestamp - effectiveStart) / 60).coerceAtLeast(1)
+                    // Overlapping entries (start before the previous stop) just butt up.
+                    gapMinutes = ((effectiveStart - cursor) / 60).coerceAtLeast(0)
+                    cursor = program.stopTimestamp
                 }
                 val fill = minutes == 0L
                 val widthPx = if (fill) 0 else (minutes * MINUTE_WIDTH_DP * density).toInt()
+                val gapPx = (gapMinutes * MINUTE_WIDTH_DP * density).toInt()
 
                 // Reuse existing block Views where possible instead of tearing every child
                 // down and rebuilding on every rebind - this was the main source of GC
@@ -467,9 +475,10 @@ class LiveGuideAdapter(
                 // rows scrolled back into view mostly get the widths they already have.
                 val lp = block.layoutParams as LinearLayout.LayoutParams
                 val weight = if (fill) 1f else 0f
-                if (lp.width != widthPx || lp.weight != weight) {
+                if (lp.width != widthPx || lp.weight != weight || lp.marginStart != gapPx) {
                     lp.width = widthPx
                     lp.weight = weight
+                    lp.marginStart = gapPx
                     block.layoutParams = lp
                 }
             }
