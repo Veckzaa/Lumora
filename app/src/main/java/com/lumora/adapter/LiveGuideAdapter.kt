@@ -315,8 +315,13 @@ class LiveGuideAdapter(
             cancelPendingLoad()
 
             val epgReady = channel.id.isNotBlank() && EpgListCache.has(channel.id)
+            val staleList = if (epgReady || channel.id.isBlank()) null else EpgListCache.get(channel.id)
             if (epgReady) {
                 renderPrograms(channel, EpgListCache.get(channel.id))
+            } else if (staleList != null) {
+                // Gone stale (EpgListCache.has): this channel's own last schedule stays up while
+                // it refetches, rather than a row the user is looking at blanking to skeletons.
+                renderPrograms(channel, staleList)
             } else {
                 // Render the placeholder immediately: this View is recycled and still holds
                 // the previous channel's program blocks - leaving them up through the

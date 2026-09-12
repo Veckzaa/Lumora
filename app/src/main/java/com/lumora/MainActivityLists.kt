@@ -1543,6 +1543,20 @@ internal fun MainActivity.showTrackPicker(isAudio: Boolean) {
 internal fun MainActivity.updateToolbarClock() {
     binding.toolbarClock.text = android.text.format.DateFormat.getTimeFormat(this)
         .format(java.util.Date())
+    refreshGuideTimeline()
+}
+
+/** The guide's ruler and rows are drawn against the half hour they were built on, and only
+ *  switching to Live TV used to rebuild them: a guide left open from 9:00 still started at 9:00
+ *  at 14:00, the morning's finished shows first. Checked on every clock tick and on return to the
+ *  app (which restarts the clock); rebinding the rows also refetches the ones whose programmes
+ *  went stale (EpgListCache.has) - only rows on screen, and only when due. */
+internal fun MainActivity.refreshGuideTimeline() {
+    // isShown: false before the window is attached, on another tab, and under the player.
+    if (!binding.liveRow.isShown) return
+    if (LiveGuideAdapter.halfHourFloor(System.currentTimeMillis()) == liveAdapter.timelineOriginSeconds) return
+    buildGuideHeader()
+    liveAdapter.notifyItemRangeChanged(0, liveAdapter.itemCount)
 }
 
 internal fun MainActivity.startToolbarClock() {
