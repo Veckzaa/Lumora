@@ -441,6 +441,31 @@ internal fun MainActivity.applyChromeWrap() {
     binding.tabBarRow.wrap = portrait
 }
 
+/** Drops Search to its icon when the one-line row is wider than its scroller. French labels plus
+ *  Discover run ~145 px past a 1080p TV's row, so Settings and Refresh were only reachable by
+ *  scrolling; Search's label (~175 px in French) covers that, and the tabs keep theirs - a
+ *  magnifier says "search" on its own, Series and Films icons don't. Portrait phones wrap instead.
+ *
+ *  Runs on every global layout: Discover or the Catch Up caret appearing changes what the row
+ *  needs without changing its bounds (fillViewport holds it at the scroller's width), so it stays
+ *  allocation-free. The hidden label counts at its last measured width, so hiding it never makes
+ *  the row "fit" again and flip back. */
+internal fun MainActivity.fitChromeLabels() {
+    val row = binding.tabBarRow
+    val viewport = binding.tabBar.width
+    if (viewport == 0) return
+    val label = binding.btnSearchLabel
+    var contentEnd = 0
+    for (i in 0 until row.childCount) {
+        val child = row.getChildAt(i)
+        if (child.visibility != View.GONE) contentEnd = maxOf(contentEnd, child.right + (child.layoutParams as ViewGroup.MarginLayoutParams).rightMargin)
+    }
+    val hidden = if (label.visibility == View.GONE) label.measuredWidth + (label.layoutParams as ViewGroup.MarginLayoutParams).marginStart else 0
+    label.visibility = if (!row.wrap && contentEnd + row.paddingRight + hidden > viewport) View.GONE else View.VISIBLE
+    // VoiceView reads an icon-only pill as nothing without it.
+    binding.btnSearch.contentDescription = label.text
+}
+
 /** Whether the category rail is collapsed on this device: a persisted pref, except on a
  *  portrait phone, where the rail auto-hides and only the transient (unpersisted)
  *  [MainActivity.portraitSidebarExpanded] can bring it back. Keeping portrait out of the
@@ -1624,6 +1649,7 @@ internal fun MainActivity.setupTabs() {
     // Hide tab bar + search until an enabled provider exists
     updateTopChromeVisibility()
     applyChromeWrap()
+    binding.tabBarRow.viewTreeObserver.addOnGlobalLayoutListener { fitChromeLabels() }
 }
 
 internal fun MainActivity.updateTabStyles(selected: View) {
