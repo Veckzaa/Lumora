@@ -77,8 +77,6 @@
     <string name="press_settings_to_add_playlist">Druk op Instellingen om een afspeellijst-URL toe te voegen</string>
     <string name="add_a_provider">Provider toevoegen</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN-PROVIDER</string>
-    <string name="startup_choose_public">PUBLIEKE STREAMINHOUD</string>
-    <string name="startup_choose_both">BEIDE</string>
     <string name="search_main_hint">Zoek in live-tv, films &amp; series…</string>
     <string name="no_downloads_yet">Nog geen downloads</string>
     <string name="overview">Overzicht</string>

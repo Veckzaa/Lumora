@@ -77,8 +77,6 @@
     <string name="press_settings_to_add_playlist">प्लेलिस्ट URL जोड़ने के लिए सेटिंग्स दबाएँ</string>
     <string name="add_a_provider">प्रोवाइडर जोड़ें</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN प्रोवाइडर</string>
-    <string name="startup_choose_public">सार्वजनिक स्ट्रीमिंग सामग्री</string>
-    <string name="startup_choose_both">दोनों</string>
     <string name="search_main_hint">लाइव टीवी, फ़िल्में और सीरीज़ खोजें…</string>
     <string name="no_downloads_yet">अभी तक कोई डाउनलोड नहीं</string>
     <string name="overview">अवलोकन</string>

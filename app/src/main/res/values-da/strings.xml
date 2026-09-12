@@ -77,8 +77,6 @@
     <string name="press_settings_to_add_playlist">Tryk på Indstillinger for at tilføje en afspilningsliste-URL</string>
     <string name="add_a_provider">Tilføj en udbyder</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN-UDBYDER</string>
-    <string name="startup_choose_public">OFFENTLIGT STREAMINGINDHOLD</string>
-    <string name="startup_choose_both">BEGGE</string>
     <string name="search_main_hint">Søg i direkte TV, film &amp; serier…</string>
     <string name="no_downloads_yet">Ingen downloads endnu</string>
     <string name="overview">Oversigt</string>

@@ -78,8 +78,6 @@
     <string name="press_settings_to_add_playlist">Pritisnite Postavke za dodavanje URL-a popisa</string>
     <string name="add_a_provider">Dodaj pružatelja</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN PRUŽATELJ</string>
-    <string name="startup_choose_public">JAVNI STREAMING SADRŽAJ</string>
-    <string name="startup_choose_both">OBOJE</string>
     <string name="search_main_hint">Pretraži TV uživo, filmove &amp; serije…</string>
     <string name="no_downloads_yet">Još nema preuzimanja</string>
     <string name="overview">Pregled</string>

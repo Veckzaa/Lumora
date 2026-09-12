@@ -79,8 +79,6 @@
     <string name="press_settings_to_add_playlist">Stiskněte Nastavení a přidejte URL playlistu</string>
     <string name="add_a_provider">Přidat poskytovatele</string>
     <string name="startup_choose_provider">POSKYTOVATEL IPTV/JELLYFIN</string>
-    <string name="startup_choose_public">VEŘEJNÝ STREAMOVACÍ OBSAH</string>
-    <string name="startup_choose_both">OBOJÍ</string>
     <string name="search_main_hint">Hledat v živé TV, filmech a seriálech…</string>
     <string name="no_downloads_yet">Zatím zde nejsou žádné soubory ke stažení</string>
     <string name="overview">Přehled</string>

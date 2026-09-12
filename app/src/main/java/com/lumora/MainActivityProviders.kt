@@ -832,60 +832,9 @@ internal suspend fun MainActivity.fetchXtreamChannels(config: IptvProviderConfig
 
 // ── First-run startup chooser (empty state) ──
 
-/** Wires the empty state's three first-run entry points. Only reachable while there is
- *  neither a provider nor a plugin enabled - showEmptyState() is the sole caller of the
- *  screen that hosts them. */
+/** Wires the empty state's first-run entry point. Only reachable while there is neither a
+ *  provider nor a plugin enabled - showEmptyState() is the sole caller of the screen that
+ *  hosts it. */
 internal fun MainActivity.wireStartupChooser() {
     binding.emptyChooseProvider.setOnClickListener { showProviderSettings() }
-    binding.emptyChoosePublic.setOnClickListener {
-        installPublicStreamingPlugins { selectDiscover() }
-    }
-    binding.emptyChooseBoth.setOnClickListener {
-        installPublicStreamingPlugins { showProviderSettings() }
-    }
-}
-
-/** Downloads and installs every stream_search/scraper_sites script the default plugin
- *  store lists - "public streaming content" is torrent/site-scraper plugins, not a
- *  traditional provider. installScript() switches a first install on by itself, so
- *  nothing here has to enable them separately. Runs [onDone] whether or not anything
- *  actually installed - a store outage must not strand the user on a dead button. */
-internal fun MainActivity.installPublicStreamingPlugins(onDone: () -> Unit) {
-    ensurePublicContentDisclaimerAccepted { doInstallPublicStreamingPlugins(onDone) }
-}
-
-private fun MainActivity.doInstallPublicStreamingPlugins(onDone: () -> Unit) {
-    val status = binding.emptyStartupStatus
-    status.text = getString(R.string.plug_downloading_streaming_plugins)
-    status.visibility = View.VISIBLE
-    binding.emptyChooseProvider.isEnabled = false
-    binding.emptyChoosePublic.isEnabled = false
-    binding.emptyChooseBoth.isEnabled = false
-    scope.launch {
-        val wanted = setOf(JsPluginContract.CAPABILITY_STREAM_SEARCH, JsPluginContract.CAPABILITY_SCRAPER_SITES)
-        var installed = 0
-        for (store in pluginStoreManager.storeUrls()) {
-            val catalog = pluginStoreManager.fetchCatalog(store.url).getOrNull() ?: continue
-            for (storeScript in catalog) {
-                if (wanted.none { it in storeScript.capabilities }) continue
-                val text = pluginStoreManager.fetchScriptText(storeScript.fileUrl) ?: continue
-                if (pluginScriptManager.installScript(text) is PluginScriptManager.InstallResult.Installed) installed++
-            }
-        }
-        binding.emptyChooseProvider.isEnabled = true
-        binding.emptyChoosePublic.isEnabled = true
-        binding.emptyChooseBoth.isEnabled = true
-        status.visibility = View.GONE
-        if (installed == 0) {
-            Toast.makeText(this@doInstallPublicStreamingPlugins, getString(R.string.plug_couldnt_reach_plugin_store), Toast.LENGTH_SHORT).show()
-            return@launch
-        }
-        pluginScriptManager.discoverScripts()
-        // The empty state was showing because there was nothing to browse - there is now,
-        // so take the chrome (tab bar/search) out of its "nothing configured" hide before
-        // handing off to the caller's destination.
-        binding.emptyState.visibility = View.GONE
-        updateTopChromeVisibility()
-        onDone()
-    }
 }

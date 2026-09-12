@@ -678,104 +678,26 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="@dimen/text_caption" />
 
-            <!-- First-run chooser: no provider and no plugin is enabled yet, so nothing
-                 above knows what the user is here for. Three ways in, stacked for D-pad
-                 down/up travel - each row's next target is fixed explicitly since a GONE
-                 sibling (this whole block hides the moment either exists) must never be
-                 left as an implicit focus-search target. -->
+            <!-- First-run entry point: no provider is configured yet. -->
             <LinearLayout
-                android:id="@+id/emptyStartupChooser"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:id="@+id/emptyChooseProvider"
+                android:layout_width="wrap_content"
+                android:layout_height="56dp"
                 android:layout_marginTop="24dp"
+                android:background="@drawable/bg_focus_item"
+                android:clickable="true"
+                android:focusable="true"
                 android:gravity="center"
-                android:orientation="vertical">
+                android:nextFocusUp="@id/btnSettings"
+                android:paddingHorizontal="24dp">
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:gravity="center"
-                    android:orientation="horizontal">
-
-                    <LinearLayout
-                        android:id="@+id/emptyChooseProvider"
-                        android:layout_width="wrap_content"
-                        android:layout_height="56dp"
-                        android:background="@drawable/bg_focus_item"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center"
-                        android:nextFocusUp="@id/btnSettings"
-                        android:nextFocusRight="@id/emptyChoosePublic"
-                        android:nextFocusDown="@id/emptyChooseBoth"
-                        android:paddingHorizontal="24dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/startup_choose_provider"
-                            android:textColor="@color/text_primary"
-                            android:textStyle="bold"
-                            android:textSize="@dimen/text_body_s" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:id="@+id/emptyChoosePublic"
-                        android:layout_width="wrap_content"
-                        android:layout_height="56dp"
-                        android:layout_marginStart="12dp"
-                        android:background="@drawable/bg_focus_item"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center"
-                        android:nextFocusUp="@id/btnSettings"
-                        android:nextFocusLeft="@id/emptyChooseProvider"
-                        android:nextFocusDown="@id/emptyChooseBoth"
-                        android:paddingHorizontal="24dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/startup_choose_public"
-                            android:textColor="@color/text_primary"
-                            android:textStyle="bold"
-                            android:textSize="@dimen/text_body_s" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/emptyChooseBoth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="56dp"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/bg_focus_item"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:nextFocusUp="@id/emptyChoosePublic"
-                    android:paddingHorizontal="24dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/startup_choose_both"
-                        android:textColor="@color/text_primary"
-                        android:textStyle="bold"
-                        android:textSize="@dimen/text_body_s" />
-                </LinearLayout>
-
-                <!-- Busy label for the plugin-download choices - hidden until tapped. -->
                 <TextView
-                    android:id="@+id/emptyStartupStatus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="12dp"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="@dimen/text_caption"
-                    android:visibility="gone" />
+                    android:text="@string/startup_choose_provider"
+                    android:textColor="@color/text_primary"
+                    android:textStyle="bold"
+                    android:textSize="@dimen/text_body_s" />
             </LinearLayout>
         </LinearLayout>
 

@@ -77,8 +77,6 @@
     <string name="press_settings_to_add_playlist">Tryck på Inställningar för att lägga till en spellista-URL</string>
     <string name="add_a_provider">Lägg till en leverantör</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN-LEVERANTÖR</string>
-    <string name="startup_choose_public">OFFENTLIGT STREAMINGINNEHÅLL</string>
-    <string name="startup_choose_both">BÅDA</string>
     <string name="search_main_hint">Sök i live-TV, filmer &amp; serier…</string>
     <string name="no_downloads_yet">Inga nedladdningar ännu</string>
     <string name="overview">Översikt</string>

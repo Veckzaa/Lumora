@@ -77,8 +77,6 @@
     <string name="press_settings_to_add_playlist">Trykk på Innstillinger for å legge til en spilleliste-URL</string>
     <string name="add_a_provider">Legg til en leverandør</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN-LEVERANDØR</string>
-    <string name="startup_choose_public">OFFENTLIG STREAMINGINNHOLD</string>
-    <string name="startup_choose_both">BEGGE</string>
     <string name="search_main_hint">Søk i direkte-TV, filmer &amp; serier…</string>
     <string name="no_downloads_yet">Ingen nedlastinger ennå</string>
     <string name="overview">Oversikt</string>

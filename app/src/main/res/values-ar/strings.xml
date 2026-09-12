@@ -81,8 +81,6 @@
     <string name="press_settings_to_add_playlist">اضغط الإعدادات لإضافة رابط قائمة تشغيل</string>
     <string name="add_a_provider">إضافة مزوّد</string>
     <string name="startup_choose_provider">مزوّد IPTV/JELLYFIN</string>
-    <string name="startup_choose_public">محتوى بث عام</string>
-    <string name="startup_choose_both">كليهما</string>
     <string name="search_main_hint">ابحث في البث المباشر والأفلام والمسلسلات…</string>
     <string name="no_downloads_yet">لا توجد تنزيلات بعد</string>
     <string name="overview">نظرة عامة</string>

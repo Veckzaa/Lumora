@@ -77,8 +77,6 @@
     <string name="press_settings_to_add_playlist">Oynatma listesi URL\'si eklemek için Ayarlar\'a basın</string>
     <string name="add_a_provider">Sağlayıcı Ekle</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN SAĞLAYICISI</string>
-    <string name="startup_choose_public">GENEL AKIŞ İÇERİĞİ</string>
-    <string name="startup_choose_both">HER İKİSİ</string>
     <string name="search_main_hint">Canlı TV, filmler &amp; dizilerde ara…</string>
     <string name="no_downloads_yet">Henüz indirme yok</string>
     <string name="overview">Genel Bakış</string>

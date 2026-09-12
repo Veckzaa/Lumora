@@ -77,8 +77,6 @@
     <string name="press_settings_to_add_playlist">Nyomja meg a Beállításokat egy lejátszási lista URL hozzáadásához</string>
     <string name="add_a_provider">Szolgáltató hozzáadása</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN SZOLGÁLTATÓ</string>
-    <string name="startup_choose_public">NYILVÁNOS STREAMELT TARTALOM</string>
-    <string name="startup_choose_both">MINDKETTŐ</string>
     <string name="search_main_hint">Élő TV, filmek és sorozatok keresése…</string>
     <string name="no_downloads_yet">Még nincs letöltés</string>
     <string name="overview">Áttekintés</string>

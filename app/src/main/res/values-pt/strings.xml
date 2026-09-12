@@ -77,8 +77,6 @@
     <string name="press_settings_to_add_playlist">Pressione Configurações para adicionar uma URL de lista de reprodução</string>
     <string name="add_a_provider">Adicionar um provedor</string>
     <string name="startup_choose_provider">PROVEDOR IPTV/JELLYFIN</string>
-    <string name="startup_choose_public">CONTEÚDO DE STREAMING PÚBLICO</string>
-    <string name="startup_choose_both">AMBOS</string>
     <string name="search_main_hint">Pesquisar TV ao vivo, filmes &amp; séries…</string>
     <string name="no_downloads_yet">Nenhum download ainda</string>
     <string name="overview">Visão geral</string>

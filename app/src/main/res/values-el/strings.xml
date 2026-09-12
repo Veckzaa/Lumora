@@ -77,8 +77,6 @@
     <string name="press_settings_to_add_playlist">Πατήστε Ρυθμίσεις για να προσθέσετε μια διεύθυνση URL λίστας αναπαραγωγής</string>
     <string name="add_a_provider">Προσθήκη παρόχου</string>
     <string name="startup_choose_provider">ΠΑΡΟΧΟΣ IPTV/JELLYFIN</string>
-    <string name="startup_choose_public">ΔΗΜΟΣΙΟ ΠΕΡΙΕΧΟΜΕΝΟ ΡΟΗΣ</string>
-    <string name="startup_choose_both">ΚΑΙ ΤΑ ΔΥΟ</string>
     <string name="search_main_hint">Αναζήτηση σε ζωντανή TV, ταινίες &amp; σειρές…</string>
     <string name="no_downloads_yet">Δεν υπάρχουν λήψεις ακόμα</string>
     <string name="overview">Επισκόπηση</string>

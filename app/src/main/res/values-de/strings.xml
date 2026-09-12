@@ -78,8 +78,6 @@
     <string name="press_settings_to_add_playlist">Drücken Sie Einstellungen, um eine Playlist-URL hinzuzufügen</string>
     <string name="add_a_provider">Anbieter hinzufügen</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN-ANBIETER</string>
-    <string name="startup_choose_public">ÖFFENTLICHE STREAMING-INHALTE</string>
-    <string name="startup_choose_both">BEIDES</string>
     <string name="search_main_hint">Live-TV, Filme &amp; Serien durchsuchen…</string>
     <string name="no_downloads_yet">Noch keine Downloads</string>
     <string name="overview">Übersicht</string>

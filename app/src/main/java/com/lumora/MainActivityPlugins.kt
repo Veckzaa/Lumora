@@ -1176,15 +1176,9 @@ internal fun MainActivity.wirePluginStoresSection(dialogView: View, manager: Plu
             row.findViewById<TextView>(R.id.storeName).text = store.name ?: store.url
             row.findViewById<TextView>(R.id.storeUrl).text = store.url
             row.findViewById<View>(R.id.storeBrowseButton).setOnClickListener { showBrowseStoreDialog(store) }
-            val removeButton = row.findViewById<View>(R.id.storeRemoveButton)
-            if (store.removable) {
-                removeButton.visibility = View.VISIBLE
-                removeButton.setOnClickListener {
-                    pluginStoreManager.removeStore(store.url)
-                    renderStoreList()
-                }
-            } else {
-                removeButton.visibility = View.GONE
+            row.findViewById<View>(R.id.storeRemoveButton).setOnClickListener {
+                pluginStoreManager.removeStore(store.url)
+                renderStoreList()
             }
             listContainer.addView(row)
             // Fetch the store's self-declared name in the background and fill it in once

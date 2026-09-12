@@ -48,28 +48,13 @@ private class FakeSharedPreferences : SharedPreferences {
 class PluginStoreManagerTest {
 
     @Test
-    fun `default store is always present and not removable`() {
+    fun `no store ships with the app, added stores are listed and can be removed`() {
         val manager = PluginStoreManager(FakeSharedPreferences())
-        val stores = manager.storeUrls()
-        assertEquals(1, stores.size)
-        assertEquals(PluginStoreManager.DEFAULT_STORE_URL, stores[0].url)
-        assertFalse(stores[0].removable)
-    }
-
-    @Test
-    fun `added stores are listed and removable, default cannot be removed`() {
-        val manager = PluginStoreManager(FakeSharedPreferences())
+        assertTrue(manager.storeUrls().isEmpty())
         manager.addStore("https://example.com/plugins/index.json")
-        var stores = manager.storeUrls()
-        assertEquals(2, stores.size)
-        assertTrue(stores.any { it.url == "https://example.com/plugins/index.json" && it.removable })
-
-        manager.removeStore(PluginStoreManager.DEFAULT_STORE_URL)
-        assertEquals(2, manager.storeUrls().size) // no-op, default survives
-
+        assertEquals(listOf("https://example.com/plugins/index.json"), manager.storeUrls().map { it.url })
         manager.removeStore("https://example.com/plugins/index.json")
-        stores = manager.storeUrls()
-        assertEquals(1, stores.size)
+        assertTrue(manager.storeUrls().isEmpty())
     }
 
     @Test

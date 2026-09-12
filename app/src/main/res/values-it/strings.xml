@@ -77,8 +77,6 @@
     <string name="press_settings_to_add_playlist">Premi Impostazioni per aggiungere un URL di playlist</string>
     <string name="add_a_provider">Aggiungi un provider</string>
     <string name="startup_choose_provider">FORNITORE IPTV/JELLYFIN</string>
-    <string name="startup_choose_public">CONTENUTI DI STREAMING PUBBLICI</string>
-    <string name="startup_choose_both">ENTRAMBI</string>
     <string name="search_main_hint">Cerca TV in diretta, film e serie…</string>
     <string name="no_downloads_yet">Nessun download</string>
     <string name="overview">Panoramica</string>

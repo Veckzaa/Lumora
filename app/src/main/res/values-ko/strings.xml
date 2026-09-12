@@ -76,8 +76,6 @@
     <string name="press_settings_to_add_playlist">재생목록 URL을 추가하려면 설정을 누르세요</string>
     <string name="add_a_provider">제공업체 추가</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN 제공업체</string>
-    <string name="startup_choose_public">공개 스트리밍 콘텐츠</string>
-    <string name="startup_choose_both">둘 다</string>
     <string name="search_main_hint">실시간 TV, 영화 &amp; 시리즈 검색…</string>
     <string name="no_downloads_yet">아직 다운로드 없음</string>
     <string name="overview">개요</string>

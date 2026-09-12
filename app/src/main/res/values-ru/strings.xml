@@ -79,8 +79,6 @@
     <string name="press_settings_to_add_playlist">Нажмите «Настройки», чтобы добавить URL плейлиста</string>
     <string name="add_a_provider">Добавить провайдера</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN ПРОВАЙДЕР</string>
-    <string name="startup_choose_public">ПУБЛИЧНЫЙ СТРИМИНГОВЫЙ КОНТЕНТ</string>
-    <string name="startup_choose_both">ОБА</string>
     <string name="search_main_hint">Поиск по ТВ, фильмам и сериалам…</string>
     <string name="no_downloads_yet">Пока нет загрузок</string>
     <string name="overview">Обзор</string>

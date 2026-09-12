@@ -77,8 +77,6 @@
     <string name="press_settings_to_add_playlist">Paina Asetukset lisätäksesi soittolistan URL-osoitteen</string>
     <string name="add_a_provider">Lisää palveluntarjoaja</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN-PALVELUNTARJOAJA</string>
-    <string name="startup_choose_public">JULKINEN SUORATOISTOSISÄLTÖ</string>
-    <string name="startup_choose_both">MOLEMMAT</string>
     <string name="search_main_hint">Hae live-TV:stä, elokuvista &amp; sarjoista…</string>
     <string name="no_downloads_yet">Ei vielä latauksia</string>
     <string name="overview">Yleiskatsaus</string>

@@ -79,8 +79,6 @@
     <string name="press_settings_to_add_playlist">Naciśnij Ustawienia, aby dodać URL listy odtwarzania</string>
     <string name="add_a_provider">Dodaj dostawcę</string>
     <string name="startup_choose_provider">DOSTAWCA IPTV/JELLYFIN</string>
-    <string name="startup_choose_public">PUBLICZNE TREŚCI STRUMIENIOWE</string>
-    <string name="startup_choose_both">OBA</string>
     <string name="search_main_hint">Szukaj w telewizji na żywo, filmach &amp; serialach…</string>
     <string name="no_downloads_yet">Brak pobranych pozycji</string>
     <string name="overview">Przegląd</string>

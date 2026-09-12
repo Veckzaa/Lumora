@@ -10,8 +10,6 @@ data class PluginStore(
     val url: String,
     /** Self-declared, falls back to the URL if the catalog has none / hasn't been fetched yet. */
     val name: String?,
-    /** The default store (Lumora's own plugin repo, connected automatically) can't be removed. */
-    val removable: Boolean,
 )
 
 /** One script listed in a store's catalog, not yet necessarily installed. */

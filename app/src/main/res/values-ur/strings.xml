@@ -77,8 +77,6 @@
     <string name="press_settings_to_add_playlist">پلے لسٹ کا URL شامل کرنے کے لیے ترتیبات دبائیں</string>
     <string name="add_a_provider">فراہم کنندہ شامل کریں</string>
     <string name="startup_choose_provider">IPTV/JELLYFIN فراہم کنندہ</string>
-    <string name="startup_choose_public">عوامی اسٹریمنگ مواد</string>
-    <string name="startup_choose_both">دونوں</string>
     <string name="search_main_hint">لائیو ٹی وی، فلمیں اور سیریز تلاش کریں…</string>
     <string name="no_downloads_yet">ابھی کوئی ڈاؤن لوڈ نہیں</string>
     <string name="overview">جائزہ</string>

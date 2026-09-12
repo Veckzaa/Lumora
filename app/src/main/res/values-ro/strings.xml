@@ -78,8 +78,6 @@
     <string name="press_settings_to_add_playlist">Apăsați Setări pentru a adăuga un URL de listă de redare</string>
     <string name="add_a_provider">Adaugă un furnizor</string>
     <string name="startup_choose_provider">FURNIZOR IPTV/JELLYFIN</string>
-    <string name="startup_choose_public">CONȚINUT DE STREAMING PUBLIC</string>
-    <string name="startup_choose_both">AMBELE</string>
     <string name="search_main_hint">Căutați în TV live, filme &amp; seriale…</string>
     <string name="no_downloads_yet">Încă nu există descărcări</string>
     <string name="overview">Prezentare generală</string>
