@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 4.5.2
 
 ### Performance
 - **Large Xtream providers load with a fraction of the memory.** Refreshing a provider used to hold its entire channel list in memory several times over while reading it, which on providers with tens of thousands of channels could run a 1 GB Fire TV stick out of memory. Lumora now reads the list as it downloads and keeps only the channels, so a refresh is faster and far less likely to fail on big providers.
@@ -10,6 +10,10 @@
 - **Background guide updates use far less memory.** The 6-hourly XMLTV refresh used to load your whole channel list just to match programmes to channels; it now reads only the two fields it needs, which matters on a 1 GB Fire TV stick while something is playing. The Android Auto browser and the provider-toggle save do the same.
 - **Opening Lumora with a large catalogue is quicker and lighter on memory.** Reading the saved channel list back on startup created a pile of throwaway data for every channel, and kept a separate copy of the same group and category names for each of thousands of channels. It now reads each line in one pass and shares those names, so the list loads in about half the time and the app holds noticeably less memory for as long as it runs - which matters most on older Fire TV sticks.
 
+### App
+- **Updates come straight from the app.** Lumora checks the published build at start-up (and from Settings → About) and offers to download and install a new one, no sideloading again.
+- **No built-in plugin store.** Lumora no longer connects to a plugin repository on its own, and the first-run screen no longer offers to download "public streaming" plugins; add a store yourself under Settings → Plugins if you want one.
+
 ### Playlists
 - **Large M3U playlists load much faster.** Reading each entry's details (name, logo, group) redid expensive setup work for every single line, so a playlist with tens of thousands of entries spent most of its load time on that instead of on your channels. That work now happens once, and loading also creates far less temporary data, which older Fire TV sticks were spending extra time cleaning up.
 
@@ -18,6 +22,7 @@
 
 ### Live TV
 - **The guide timeline starts on the half hour.** Open it at 20:04 and the ruler starts at 20:00, with the programme already running drawn from 20:00, instead of a "Now" column cut at the exact minute you opened it. Channels with no programme information now show that as one bar across the row rather than a small box.
+- **Guide blocks sit where the ruler says.** A hole in a channel's schedule now leaves a gap instead of pulling every later programme to the left.
 - **The selected channel card is no longer cut off on the left.** Its zoom-in on selection was being clipped to the row since the guide rework.
 - **Smoother guide scrolling on Fire TV.** The programme rows no longer fade out at their edges; that effect made every row redraw on every frame of a scroll, which is what made the remote feel sluggish on a stick.
 - **Channels no longer get stuck loading in the guide.** A channel row that had scrolled off the screen and come straight back could sit on its loading placeholder for good, because its schedule fetch had been cancelled on the way out and nothing restarted it; it only loaded once you scrolled far enough away and back. It now picks the fetch up again as soon as it reappears. Separately, a channel whose row scrolled away in the middle of its fetch was being remembered as having no programme information for the rest of the session.
