@@ -1409,8 +1409,8 @@ class MainActivity : AppCompatActivity() {
             if (!info.isUpdateAvailable || info.downloadUrl.isBlank()) return@launch
             AlertDialog.Builder(this@MainActivity)
                 .setTitle(getString(R.string.plug_update_available))
-                .setMessage(getString(R.string.plug_update_available_message, info.latestVersion, info.currentVersion, info.releaseNotes.take(200)))
-                .setPositiveButton(getString(R.string.update)) { _, _ -> downloadAndInstallUpdate(info.downloadUrl, info.latestVersion) }
+                .setMessage(getString(R.string.plug_update_available_message, info.name, info.currentVersion))
+                .setPositiveButton(getString(R.string.update)) { _, _ -> downloadAndInstallUpdate(info.downloadUrl, info.build) }
                 .setNegativeButton(getString(R.string.plug_later), null)
                 .show()
         }
@@ -1418,9 +1418,9 @@ class MainActivity : AppCompatActivity() {
 
     /** Downloads the release APK via DownloadManager, then hands it to the system package
      *  installer as soon as the download finishes - no separate "tap to install" step. */
-    internal fun downloadAndInstallUpdate(downloadUrl: String, versionName: String) {
+    internal fun downloadAndInstallUpdate(downloadUrl: String, build: String) {
         val installer = AppUpdateInstaller(this)
-        val downloadId = installer.downloadApk(downloadUrl, versionName)
+        val downloadId = installer.downloadApk(downloadUrl)
         Toast.makeText(this, getString(R.string.plug_downloading_update), Toast.LENGTH_SHORT).show()
         scope.launch {
             while (true) {
@@ -1432,6 +1432,7 @@ class MainActivity : AppCompatActivity() {
                 if (installer.isDownloadComplete(downloadId)) {
                     val path = installer.getDownloadedFilePath(downloadId)
                     if (path != null) {
+                        AppUpdateChecker.markInstalled(this@MainActivity, build)
                         // If the user had to be sent to grant "install unknown apps",
                         // installApk() returns false - retry once automatically after
                         // they've had time to flip it, instead of making them come back

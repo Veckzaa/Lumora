@@ -99,7 +99,7 @@
 
     <!-- Update & backup toasts (MainActivity) -->
     <string name="plug_update_available">Update available</string>
-    <string name="plug_update_available_message">Lumora v%1$s is available.\nCurrent: v%2$s\n\n%3$s</string>
+    <string name="plug_update_available_message">A new build of Lumora is available (%1$s).\nInstalled: v%2$s</string>
     <string name="plug_later">Later</string>
     <string name="plug_downloading_update">Downloading update…</string>
     <string name="plug_update_download_failed">Update download failed</string>

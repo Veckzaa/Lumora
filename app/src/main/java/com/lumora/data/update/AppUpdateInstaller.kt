@@ -25,8 +25,8 @@ class AppUpdateInstaller(private val context: Context) {
      * Start downloading an APK update.
      * Returns the DownloadManager ID for tracking progress.
      */
-    fun downloadApk(downloadUrl: String, versionName: String): Long {
-        val fileName = "Lumora_v$versionName.apk"
+    fun downloadApk(downloadUrl: String): Long {
+        val fileName = "Lumora.apk"
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
         // The public Downloads dir (setDestinationInExternalPublicDir) requires
@@ -35,7 +35,6 @@ class AppUpdateInstaller(private val context: Context) {
         // external dir needs no such permission and is still reachable by FileProvider.
         val request = DownloadManager.Request(Uri.parse(downloadUrl))
             .setTitle(context.getString(R.string.ui_update_title))
-            .setDescription(context.getString(R.string.ui_update_downloading, versionName))
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, fileName)
             .setAllowedOverMetered(true)

@@ -1557,8 +1557,8 @@ internal fun MainActivity.showProviderSettings() {
                 info.isUpdateAvailable && info.downloadUrl.isNotBlank() -> {
                     AlertDialog.Builder(this@showProviderSettings)
                         .setTitle(getString(R.string.sett_update_available))
-                        .setMessage(getString(R.string.sett_update_available_message, info.latestVersion, info.currentVersion, info.releaseNotes.take(200).replace("%", "%%")))
-                        .setPositiveButton(getString(R.string.update)) { _, _ -> downloadAndInstallUpdate(info.downloadUrl, info.latestVersion) }
+                        .setMessage(getString(R.string.plug_update_available_message, info.name, info.currentVersion))
+                        .setPositiveButton(getString(R.string.update)) { _, _ -> downloadAndInstallUpdate(info.downloadUrl, info.build) }
                         .setNegativeButton(getString(R.string.sett_later), null)
                         .show()
                 }

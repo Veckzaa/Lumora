@@ -16,7 +16,6 @@
 
     <!-- App updates -->
     <string name="ui_update_title">Lumora Update</string>
-    <string name="ui_update_downloading">Downloading v%1$s</string>
     <string name="ui_update_allow_install">Allow Lumora to install updates, then try again</string>
     <string name="ui_update_no_app">No app found to install the update</string>
 

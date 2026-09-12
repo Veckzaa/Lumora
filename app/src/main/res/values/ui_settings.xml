@@ -116,7 +116,6 @@
     <string name="sett_checking">Checking…</string>
     <string name="sett_couldnt_check_updates">Couldn\'t check for updates</string>
     <string name="sett_update_available">Update available</string>
-    <string name="sett_update_available_message">Lumora v%1$s is available.\nCurrent: v%2$s\n\n%3$s</string>
     <string name="sett_later">Later</string>
     <string name="sett_latest_version">You\'re on the latest version</string>
 

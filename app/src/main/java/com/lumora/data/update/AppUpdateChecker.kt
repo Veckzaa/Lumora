@@ -4,76 +4,69 @@ import android.content.Context
 import android.util.Log
 import com.lumora.BaseApplication
 import okhttp3.Request
+import java.io.File
 
 /**
- * Checks for app updates via GitHub Releases API.
- * Auto-detects the latest release and compares with the installed version.
+ * Checks for app updates against one Dropbox file.
+ *
+ * Deployment is "replace the APK behind [UPDATE_URL]" (same name, Replace; the share link
+ * follows the file id): no release tags, no version bumps. A HEAD on the direct link returns
+ * an `etag` that changes on every upload, the file name, and the size - but only with
+ * `Accept-Encoding: identity`; with OkHttp's default gzip Dropbox drops the etag and length.
+ *
+ * The etag of the build this install came from is remembered; a different one on Dropbox
+ * means a newer upload. Size alone is not enough (every incremental debug build came out the
+ * same size: AGP's packager rewrites entries in place and leaves slack), but a size that differs
+ * from the installed APK - Android keeps it byte for byte at `sourceDir` - is proof of a
+ * different build, which covers a fresh sideload with no remembered etag: it is offered the
+ * update if Dropbox already holds something else, and otherwise just records what's there.
  */
 class AppUpdateChecker(private val context: Context) {
 
     private val TAG = "AppUpdate"
-    private val GITHUB_REPO = "disclosurez/Lumora"
 
     data class UpdateInfo(
-        val latestVersion: String,
+        /** Dropbox's etag for the upload; shown nowhere, stored by [markInstalled]. */
+        val build: String,
+        /** The file's current name on Dropbox, e.g. "lumoraV2.apk", for the prompt. */
+        val name: String,
         val currentVersion: String,
         val downloadUrl: String,
-        val releaseNotes: String,
         val isUpdateAvailable: Boolean
     )
 
-    /**
-     * Check for updates by fetching the latest GitHub release.
-     */
     suspend fun checkForUpdate(): UpdateInfo? {
         return try {
-            val url = "https://api.github.com/repos/$GITHUB_REPO/releases/latest"
-            val request = Request.Builder().url(url)
-                .header("Accept", "application/vnd.github.v3+json")
-                .header("User-Agent", "Lumora/2.0")
-                .build()
-
-            // The app-wide client (this class is constructed per check, so a private one
-            // built a fresh connection pool each time), and use{} because the non-2xx early
-            // return below used to leak the response - a connection never returned to the
-            // pool (same pattern as JellyfinProvider.fetchItems).
+            val request = Request.Builder().url(UPDATE_URL).head().header("Accept-Encoding", "identity").build()
+            // use{}: a non-2xx early return used to leak the response and its pooled connection.
             BaseApplication.instance.okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    Log.w(TAG, "GitHub API: HTTP ${response.code}")
+                    Log.w(TAG, "Update check: HTTP ${response.code}")
                     return@use null
                 }
-
-                val body = response.body?.string() ?: return@use null
-                val json = org.json.JSONObject(body)
-
-                val latestTag = json.optString("tag_name", "")?.removePrefix("v")
-                val releaseNotes = json.optString("body", "")
-                val assets = json.optJSONArray("assets")
-
-                var downloadUrl = ""
-                if (assets != null) {
-                    for (i in 0 until assets.length()) {
-                        val asset = assets.getJSONObject(i)
-                        val name = asset.optString("name", "")
-                        if (name.endsWith(".apk")) {
-                            downloadUrl = asset.optString("browser_download_url", "")
-                            break
-                        }
-                    }
+                val build = response.header("ETag")?.trim('"') ?: return@use null
+                val size = response.header("Content-Length")?.toLongOrNull() ?: 0L
+                val name = response.header("Content-Disposition")
+                    ?.let { Regex("filename=\"?([^\";]+)").find(it)?.groupValues?.get(1) } ?: "Lumora.apk"
+                val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                val installed = prefs.getString(KEY_BUILD, null)
+                val installedSize = File(context.applicationInfo.sourceDir).length()
+                val newer = when {
+                    size > 0 && size != installedSize -> true
+                    installed == null -> false
+                    else -> installed != build
                 }
-
+                Log.i(TAG, "Dropbox: $name $size bytes build $build; installed $installedSize bytes build $installed -> ${if (newer) "update" else "current"}")
+                if (installed == null && !newer) prefs.edit().putString(KEY_BUILD, build).apply()
                 val currentVersion = try {
                     context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
                 } catch (e: Exception) { "1.0" }
-
-                val isUpdate = latestTag != null && isNewerVersion(latestTag, currentVersion)
-
                 UpdateInfo(
-                    latestVersion = latestTag ?: currentVersion,
+                    build = build,
+                    name = name,
                     currentVersion = currentVersion,
-                    downloadUrl = downloadUrl,
-                    releaseNotes = releaseNotes.take(500),
-                    isUpdateAvailable = isUpdate
+                    downloadUrl = UPDATE_URL,
+                    isUpdateAvailable = newer
                 )
             }
         } catch (e: Exception) {
@@ -82,16 +75,19 @@ class AppUpdateChecker(private val context: Context) {
         }
     }
 
-    /** Numeric, part-by-part comparison - a plain string ">" breaks past single digits
-     *  ("1.10" < "1.9" lexically, even though 1.10 is the newer release). */
-    private fun isNewerVersion(latest: String, current: String): Boolean {
-        val latestParts = latest.split(".").mapNotNull { it.toIntOrNull() }
-        val currentParts = current.split(".").mapNotNull { it.toIntOrNull() }
-        for (i in 0 until maxOf(latestParts.size, currentParts.size)) {
-            val l = latestParts.getOrElse(i) { 0 }
-            val c = currentParts.getOrElse(i) { 0 }
-            if (l != c) return l > c
+    companion object {
+        /** Direct (`dl=1`) Dropbox link to the current build. Upload the new APK over this file
+         *  (same name, Replace) so the link keeps pointing at it; a new upload is a new link.
+         *  Renaming it afterwards is fine, the name only shows in the prompt. */
+        const val UPDATE_URL =
+            "https://www.dropbox.com/scl/fi/f1sewaklpbpjc1dra235g/lumoraV1.apk?rlkey=1iua0e0ueohisostvqdm3rvvr&st=25bsoozl&dl=1"
+        private const val PREFS = "app_update"
+        private const val KEY_BUILD = "installed_build"
+
+        /** Called once the update's download is handed to the installer: the next launch is
+         *  that build, and without this the same upload would be offered again every start. */
+        fun markInstalled(context: Context, build: String) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_BUILD, build).apply()
         }
-        return false
     }
 }

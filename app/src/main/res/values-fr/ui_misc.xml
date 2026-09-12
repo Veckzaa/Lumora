@@ -16,7 +16,6 @@
 
     <!-- App updates -->
     <string name="ui_update_title">Mise à jour Lumora</string>
-    <string name="ui_update_downloading">Téléchargement de la v%1$s</string>
     <string name="ui_update_allow_install">Autorisez Lumora à installer des mises à jour, puis réessayez</string>
     <string name="ui_update_no_app">Aucune application trouvée pour installer la mise à jour</string>
 
