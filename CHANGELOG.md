@@ -12,6 +12,7 @@
 
 ### App
 - **Updates come straight from the app.** Lumora checks the published build at start-up (and from Settings → About) and offers to download and install a new one, no sideloading again.
+- **Half the download on Fire TV.** Lumora now comes as one APK per processor type: the Fire TV Stick build is 20 MB instead of 36 MB, because it no longer carries the playback libraries for three other kinds of processor it can never use. The universal APK is still there for phones.
 - **No built-in plugin store.** Lumora no longer connects to a plugin repository on its own, and the first-run screen no longer offers to download "public streaming" plugins; add a store yourself under Settings → Plugins if you want one.
 
 ### Playlists

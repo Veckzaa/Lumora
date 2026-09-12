@@ -58,14 +58,26 @@ jobs:
         env:
           BUILD_TOOLS_VERSION: "35.0.0"
 
-      - name: Rename APK
-        run: cp "${{ steps.sign_app.outputs.signedReleaseFile }}" app/build/outputs/apk/release/Lumora.apk
+      # The signer handles every APK in the directory: one per ABI plus the universal (see
+      # `splits` in app/build.gradle.kts). Lumora-armeabi-v7a.apk is the Fire TV stick build,
+      # Lumora.apk the universal one for phones; x86 splits are for the emulator only.
+      - name: Rename APKs
+        run: |
+          cd app/build/outputs/apk/release
+          for f in app-*-release*-signed.apk; do
+            abi=$(echo "$f" | sed -E 's/^app-(.*)-release.*-signed\.apk$/\1/')
+            case "$abi" in
+              universal) mv "$f" Lumora.apk ;;
+              armeabi-v7a|arm64-v8a) mv "$f" "Lumora-$abi.apk" ;;
+            esac
+          done
+          ls -l Lumora*.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: Lumora-APK
-          path: app/build/outputs/apk/release/Lumora.apk
+          path: app/build/outputs/apk/release/Lumora*.apk
           compression-level: 0
 
       # Release notes come from the tag's own section of CHANGELOG.md, so a release says
@@ -87,11 +99,11 @@ jobs:
             ' CHANGELOG.md
             echo
             echo "### Installation"
-            echo "Download the APK below and install on your Android TV, Fire TV Stick, or phone."
+            echo "Fire TV Stick / Android TV: Lumora-armeabi-v7a.apk (Lumora-arm64-v8a.apk on 64-bit boxes). Phones: Lumora.apk works everywhere."
           } > release-notes.md
           if [ "$(grep -c '[^[:space:]]' release-notes.md)" -le 4 ]; then
             echo "No CHANGELOG entry for $VERSION - using generic notes"
-            printf '## Lumora %s\n\n### Installation\nDownload the APK below and install on your Android TV, Fire TV Stick, or phone.\n' "$GITHUB_REF_NAME" > release-notes.md
+            printf '## Lumora %s\n\n### Installation\nFire TV Stick / Android TV: Lumora-armeabi-v7a.apk (Lumora-arm64-v8a.apk on 64-bit boxes). Phones: Lumora.apk works everywhere.\n' "$GITHUB_REF_NAME" > release-notes.md
           fi
           cat release-notes.md
 
@@ -103,4 +115,6 @@ jobs:
           name: Lumora ${{ github.ref_name }}
           body_path: release-notes.md
           files: |
+            app/build/outputs/apk/release/Lumora-armeabi-v7a.apk
+            app/build/outputs/apk/release/Lumora-arm64-v8a.apk
             app/build/outputs/apk/release/Lumora.apk

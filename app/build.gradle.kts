@@ -129,6 +129,23 @@ android {
         jvmTarget = "17"
     }
 
+    // One APK per processor type next to the universal one. libtorrent4j (plus the FFmpeg
+    // audio decoder) is 15-17 MB per ABI and the universal APK carries all four, so a Fire TV
+    // stick downloaded and stored three ABIs it can never load; with useLegacyPackaging the
+    // one it can use is then extracted again at install. Sticks are armeabi-v7a (a 64-bit
+    // stick still runs the 32-bit build); publish that one for the Dropbox update link and
+    // for sideloading, the universal for phones and Android Auto. x86 stays so the
+    // FireTV_API25 AVD installs its own small one too. Same versionCode across splits: nothing
+    // here goes through a store that needs them to differ.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = true
+        }
+    }
+
     packaging {
         jniLibs {
             // Extract .so files to disk instead of loading them directly from the APK. libtorrent4j's

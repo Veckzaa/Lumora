@@ -40,7 +40,11 @@ STARTUP="$OUT/startup.tsv"
 
 echo "== Building benchmark APKs"
 ./gradlew -q --console=plain :app:assembleBenchmark :app:assembleBenchmarkAndroidTest 2>&1 | grep -vE '^w: |^Note: ' || true
-APP_APK=app/build/outputs/apk/benchmark/app-benchmark.apk
+# ABI splits: install the one the device runs, and measure Z1 on the armeabi-v7a APK - the one
+# a Fire TV stick downloads - with the universal alongside for reference.
+APP_APK=app/build/outputs/apk/benchmark/app-$($ADB shell getprop ro.product.cpu.abi | tr -d '\r')-benchmark.apk
+V7A_APK=app/build/outputs/apk/benchmark/app-armeabi-v7a-benchmark.apk
+UNIVERSAL_APK=app/build/outputs/apk/benchmark/app-universal-benchmark.apk
 TEST_APK=app/build/outputs/apk/androidTest/benchmark/app-benchmark-androidTest.apk
 $ADB install -r "$APP_APK" >/dev/null
 $ADB install -r -t "$TEST_APK" >/dev/null
@@ -123,8 +127,9 @@ median_row() {
 }
 col() { tail -n +2 "$STARTUP" | cut -f"$1" | grep -v '^$' | median; }
 
-apk_bytes=$(stat -c %s "$APP_APK")
-v7a_bytes=$(unzip -l "$APP_APK" 'lib/armeabi-v7a/*' | tail -1 | awk '{print $1}')
+apk_bytes=$(stat -c %s "$V7A_APK")
+universal_bytes=$(stat -c %s "$UNIVERSAL_APK")
+v7a_bytes=$(unzip -l "$V7A_APK" 'lib/armeabi-v7a/*' | tail -1 | awk '{print $1}')
 dirty=$(git diff --quiet HEAD -- app || echo " + uncommitted changes in app/")
 
 {
@@ -157,8 +162,8 @@ dirty=$(git diff --quiet HEAD -- app || echo " + uncommitted changes in app/")
   echo
   echo "## Z1 APK"
   echo
-  echo "- benchmark APK: $((apk_bytes / 1024)) KB (release contents without R8)"
-  echo "- armeabi-v7a native libs: $((v7a_bytes / 1024)) KB"
+  echo "- armeabi-v7a benchmark APK: $((apk_bytes / 1024)) KB (release contents without R8), of which native libs $((v7a_bytes / 1024)) KB"
+  echo "- universal benchmark APK: $((universal_bytes / 1024)) KB"
 } > "$OUT/summary.md"
 
 echo

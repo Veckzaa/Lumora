@@ -149,7 +149,7 @@ cd lumora
 ./gradlew :app:assembleDebug
 ```
 
-The debug APK will be at `app/build/outputs/apk/debug/app-debug.apk`.
+The debug APKs will be under `app/build/outputs/apk/debug/`: one per processor type (`app-armeabi-v7a-debug.apk` is the one for Fire TV sticks) plus `app-universal-debug.apk`.
 
 ### Release builds
 
