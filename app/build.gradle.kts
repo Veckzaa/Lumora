@@ -112,6 +112,14 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             applicationIdSuffix = ".bench"
         }
+        // What goes on the sticks (Dropbox link, sideloading). With no release keystore they have
+        // been running the debug build, and ART ignores compiled code for a debuggable app - the
+        // Baseline Profile included - so most of it ran interpreted. Same package and debug key as
+        // debug, so it installs over those builds in place and keeps their settings.
+        create("stick") {
+            initWith(getByName("benchmark"))
+            applicationIdSuffix = ".debug"
+        }
     }
     testBuildType = "benchmark"
 

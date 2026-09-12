@@ -30,7 +30,8 @@ internal fun pendingInstallResult(updateTimeAtHandoff: Long, updateTimeNow: Long
  *
  * Deployment is "replace the APK behind [UPDATE_URL] and rename it" (Replace keeps the share
  * link, which follows the file id): the file name is the version - lumoraV1.apk, lumoraV1.1.apk.
- * Upload the armeabi-v7a APK: every Fire TV runs it, at half the universal's size.
+ * Upload app-armeabi-v7a-stick.apk: every Fire TV runs armeabi-v7a, at half the universal's size,
+ * and the `stick` build type is the debug install's package and key without being debuggable.
  * A HEAD on the direct link returns that name in Content-Disposition, but only with
  * `Accept-Encoding: identity`; with OkHttp's default gzip Dropbox drops most headers.
  *

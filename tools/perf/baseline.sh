@@ -108,7 +108,7 @@ if [ -n "${THROTTLE:-}" ]; then tools/perf/throttle.sh "$THROTTLE"; fi
 press() { # $1 = Linux key code, $2 = count
   $ADB shell "for i in \$(seq $2); do sendevent $INPUT_DEV 1 $1 1; sendevent $INPUT_DEV 0 0 0; sendevent $INPUT_DEV 1 $1 0; sendevent $INPUT_DEV 0 0 0; sleep 0.05; done"
 }
-INPUT_DEV=$($ADB shell getevent -pl | tr -d '\r' | awk '/add device/ {d=$4} /KEY_DOWN/ {print d; exit}')
+INPUT_DEV=$($ADB shell getevent -pl | tr -d '\r' | awk '/add device/ {d=$4} /KEY_DOWN/ && !p {print d; p=1}')
 press 106 1   # KEY_RIGHT
 $ADB shell sleep 2
 $ADB shell dumpsys gfxinfo "$PKG" reset >/dev/null

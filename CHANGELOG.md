@@ -3,6 +3,7 @@
 ## 4.5.2
 
 ### Performance
+- **Lumora starts much faster on Fire TV.** The Fire TV build was a developer build, which Android runs without most of its speed-ups. It is now a regular build, and it also tells the device which parts of the app to prepare in advance for starting up and scrolling. The device does that preparation while it sits idle, so the full gain shows from the day after an install or update. It installs over the old build and keeps your channels and settings; the app is now called "Lumora" on the home screen instead of "Lumora Debug".
 - **Large Xtream providers load with a fraction of the memory.** Refreshing a provider used to hold its entire channel list in memory several times over while reading it, which on providers with tens of thousands of channels could run a 1 GB Fire TV stick out of memory. Lumora now reads the list as it downloads and keeps only the channels, so a refresh is faster and far less likely to fail on big providers.
 - **Scrolling the TV guide is lighter.** Each channel row that scrolls into view now costs less to prepare, and favouriting a channel or setting a reminder updates that one row instead of redrawing the whole guide, so the star lands instantly and the selection stays where it was.
 - **XMLTV guide updates are about three times faster.** The programme guide downloaded from an XMLTV source is now read by a small native parser, so a big source takes a third of the time and less than half the memory to process in the background. Devices that can't load the native code keep using the old parser.
