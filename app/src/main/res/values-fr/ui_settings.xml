@@ -72,6 +72,7 @@
     <!-- MainActivitySettings.kt - boîte de dialogue des paramètres de lecture -->
     <string name="sett_external_player_summary">Lecteur externe : %1$s</string>
     <string name="sett_suggest_external_player_on_problems">Proposer un lecteur externe en cas de problème : %1$s</string>
+    <string name="sett_match_frame_rate">Adapter la fréquence du téléviseur aux films et séries : %1$s</string>
     <string name="sett_suggest_external_player">Proposer un lecteur externe : %1$s</string>
     <string name="sett_on">ON</string>
     <string name="sett_off">OFF</string>

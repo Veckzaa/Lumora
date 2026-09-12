@@ -18,6 +18,9 @@
 - **Right from Home goes to Search again.** When Discover isn't shown, the remote's right press on Home did nothing and you had to go around through the screen below.
 - **No built-in plugin store.** Lumora no longer connects to a plugin repository on its own, and the first-run screen no longer offers to download "public streaming" plugins; add a store yourself under Settings → Plugins if you want one.
 
+### Playback
+- **Films and series play at their own frame rate.** On a Fire TV 4K, Cube or Android TV, Lumora now asks the TV to switch to a refresh rate that fits the video - 24 Hz for a film instead of holding it on 60 - so slow pans stop stuttering. On Fire TV it needs "Match original frame rate" on in the system Display settings; it never happens on live channels (the switch blanks the screen for a moment). Off switch in Settings → Playback.
+
 ### Playlists
 - **Large M3U playlists load much faster.** Reading each entry's details (name, logo, group) redid expensive setup work for every single line, so a playlist with tens of thousands of entries spent most of its load time on that instead of on your channels. That work now happens once, and loading also creates far less temporary data, which older Fire TV sticks were spending extra time cleaning up.
 

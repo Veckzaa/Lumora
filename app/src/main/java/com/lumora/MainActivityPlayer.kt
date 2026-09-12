@@ -28,6 +28,7 @@ import com.lumora.data.IptvProviderStore
 import com.lumora.plugin.ResolveResult
 import com.lumora.torrent.TorrentEngine
 import com.lumora.torrent.TorrentForegroundService
+import com.lumora.player.FrameRateMatcher
 import com.lumora.player.PlayerManager
 import com.lumora.player.VideoAspectFrameLayout
 import com.lumora.util.extractLeadingTag
@@ -538,6 +539,7 @@ internal fun MainActivity.setupPlayerControls() {
             // decode none of it (AC3/E-AC3 on hardware without a Dolby licence, typically).
             // Nothing in ExoPlayer treats that as an error, so it has to be noticed here.
             checkForUndecodableAudio(tracks)
+            matchDisplayToVideo()
         }
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             updatePlayPauseIcon()
@@ -556,6 +558,8 @@ internal fun MainActivity.setupPlayerControls() {
             lastVideoWidth = w
             lastVideoHeight = h
             currentStreamVideoHeight = h
+            // The frame rate can land with the decoder's first output rather than the tracks.
+            matchDisplayToVideo()
         }
     })
 }
@@ -1935,6 +1939,12 @@ internal fun MainActivity.saveCurrentPlaybackPosition() {
     }
 }
 
+/** See FrameRateMatcher: films and series only, and only when the setting is on. */
+private fun MainActivity.matchDisplayToVideo() {
+    if (nowPlayingChannel?.mediaType == MediaType.LIVE || !FrameRateMatcher.isEnabled(this)) return
+    FrameRateMatcher.match(this, playerManager.videoFrameRate)
+}
+
 internal fun MainActivity.hidePlayer() {
     saveCurrentPlaybackPosition()
     // Watched state may have moved during playback - the Home up-next memo is stale.
@@ -1984,6 +1994,7 @@ internal fun MainActivity.hidePlayer() {
     resumePromptDialog?.dismiss()
     resumePromptDialog = null
     playerManager.stop()
+    FrameRateMatcher.reset(this)
     sleepTimer.stop()
     // A plugin-served stream (Find Stream) keeps a torrent + local server alive for as long
     // as we're playing its URL - release it now.

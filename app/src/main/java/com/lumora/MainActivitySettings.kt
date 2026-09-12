@@ -21,6 +21,7 @@ import com.lumora.model.Provider
 import com.lumora.model.IptvProviderConfig
 import com.lumora.data.IptvProviderStore
 import com.lumora.pairing.QrPairingManager
+import com.lumora.player.FrameRateMatcher
 import com.lumora.player.PlayerManager
 import com.lumora.util.normalizeServerUrl
 import com.lumora.data.local.entity.EpgSourceEntity
@@ -1257,6 +1258,7 @@ internal fun MainActivity.showProviderSettings() {
         val items = arrayOf(
             getString(R.string.sett_external_player_summary, externalPlayerSummary(this)),
             getString(R.string.sett_suggest_external_player_on_problems, if (prefs.getBoolean(PREF_SUGGEST_EXTERNAL_PLAYER, true)) getString(R.string.sett_on) else getString(R.string.sett_off)),
+            getString(R.string.sett_match_frame_rate, if (FrameRateMatcher.isEnabled(this)) getString(R.string.sett_on) else getString(R.string.sett_off)),
             getString(R.string.legal_notice_title)
         )
         AlertDialog.Builder(this@showProviderSettings)
@@ -1269,7 +1271,12 @@ internal fun MainActivity.showProviderSettings() {
                         prefs.edit().putBoolean(PREF_SUGGEST_EXTERNAL_PLAYER, on).apply()
                         Toast.makeText(this@showProviderSettings, getString(R.string.sett_suggest_external_player, if (on) getString(R.string.sett_on) else getString(R.string.sett_off)), Toast.LENGTH_SHORT).show()
                     }
-                    2 -> showLegalNotice()
+                    2 -> {
+                        val on = !FrameRateMatcher.isEnabled(this@showProviderSettings)
+                        prefs.edit().putBoolean(FrameRateMatcher.PREF_MATCH_FRAME_RATE, on).apply()
+                        Toast.makeText(this@showProviderSettings, getString(R.string.sett_match_frame_rate, if (on) getString(R.string.sett_on) else getString(R.string.sett_off)), Toast.LENGTH_SHORT).show()
+                    }
+                    3 -> showLegalNotice()
                 }
             }
             .setPositiveButton(getString(R.string.close), null)

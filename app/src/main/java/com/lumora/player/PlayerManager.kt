@@ -637,6 +637,9 @@ class PlayerManager(
         player.stop()
     }
 
+    /** Frame rate from the container's video format, or -1 when the source doesn't say. */
+    val videoFrameRate: Float get() = player.videoFormat?.frameRate ?: -1f
+
     /** Add a player event listener. */
     fun addListener(listener: Player.Listener) {
         listeners.add(listener)

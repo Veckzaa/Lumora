@@ -72,6 +72,7 @@
     <!-- MainActivitySettings.kt - playback settings dialog -->
     <string name="sett_external_player_summary">External player: %1$s</string>
     <string name="sett_suggest_external_player_on_problems">Suggest external player on problems: %1$s</string>
+    <string name="sett_match_frame_rate">Match the TV\'s refresh rate to films &amp; series: %1$s</string>
     <string name="sett_suggest_external_player">Suggest external player: %1$s</string>
     <string name="sett_on">ON</string>
     <string name="sett_off">OFF</string>
