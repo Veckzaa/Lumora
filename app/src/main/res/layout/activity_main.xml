@@ -42,8 +42,10 @@
                  wrap_content inside the group - no weight - so the first tab (Live TV)
                  sits directly against the icon, and the scroller (0dp + weight=1) takes
                  exactly the remaining width: all tabs at full size on TV, a scrolling
-                 window on a portrait phone. clipChildren false so the tabs' focus scale
-                 isn't sliced by the group's bounds. -->
+                 window on a portrait phone. clipChildren stays on: the scroller's own 4dp
+                 padding already absorbs the tabs' 6 % focus scale, and with it off the tab
+                 row's overflow (French labels run ~100 px past the scroller on 1080p) painted
+                 the Refresh icon on top of the clock beside it. -->
             <!-- height is wrap_content, NOT match_parent: in a wrap_content horizontal
                  LinearLayout a match_parent child's own height doesn't count toward the row's
                  height, so once the row gained a second, fixed-height child (the clock) the
@@ -54,8 +56,6 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:clipChildren="false"
-                android:clipToPadding="false"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
