@@ -1882,6 +1882,8 @@ class MainActivity : AppCompatActivity() {
      *  same broken default search. Activity-level dispatch always sees the key, and resolving the
      *  holder from whatever view actually has focus covers both cases. */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        // Watches only - every key still goes on through the checks below.
+        trackSixSevenCode(event)
         // A few projected hosts route controller keys to the Activity instead of the dialog
         // window. Keep the disclaimer usable in that path too, including hosts that emit only
         // one edge of a center-button click.
