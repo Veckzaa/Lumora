@@ -203,6 +203,7 @@ internal fun MainActivity.classifyAndShowLiveFirst() {
                 // Guard: user already moved to another tab - live side only, no selectTab.
                 else -> Unit
             }
+            resumeLastTitle()
             // The number to judge a cold start by: process start to content on screen.
             // The per-pass lines above only account for their own work, and miss process
             // creation, Application.onCreate, layout inflation and the first frame.

@@ -79,6 +79,12 @@ import kotlinx.coroutines.*
 
 internal const val PREF_HIDE_NON_ENGLISH = "hide_non_english_vod"
 internal const val PREF_HIDE_ADULT = "hide_adult_categories"
+/** Id of the live channel last opened fullscreen: where Live TV lands on the next launch. */
+internal const val PREF_LAST_LIVE_CHANNEL = "last_live_channel"
+/** Id of the film or series whose detail page playback last started from, and whether that
+ *  or a live channel was the most recent thing watched: a launch reopens it (resumeLastTitle). */
+internal const val PREF_LAST_VOD = "last_vod_item"
+internal const val PREF_LAST_WATCHED_KIND = "last_watched_kind"
 /** Series the user has taken off Up Next, by parent series id (qualified, as an episode's
  *  categoryId carries it). Up Next is derived from watch state rather than chosen, so the only
  *  way to say "not this one" is to remember the refusal - a removal that lived in memory would
@@ -585,6 +591,14 @@ class MainActivity : AppCompatActivity() {
      *  consumed (and cleared) by hidePlayer. Null for live TV and for anything played straight
      *  from a shelf, which have no detail page behind them. */
     internal var detailReturnItem: Channel? = null
+        set(value) {
+            field = value
+            // Every detail-originated play path sets this right before playing, which makes it
+            // the one place that knows which title was watched last.
+            // Xtream ids are per type, a film and a series can share one: the kind says which list.
+            if (value != null) prefs.edit().putString(PREF_LAST_VOD, value.id)
+                .putString(PREF_LAST_WATCHED_KIND, if (value.mediaType == MediaType.SERIES) "series" else "film").apply()
+        }
     /** The version group [detailReturnItem] was opened with, so re-opening its detail page shows
      *  the same set of alternate versions/episodes rather than re-deriving a narrower one. */
     internal var detailReturnGroup: List<Channel>? = null
@@ -2230,6 +2244,11 @@ class MainActivity : AppCompatActivity() {
     )
 
     internal var lastFocusedLiveChannel: Channel? = null
+    /** True until Live TV's first fill of this launch has landed on [PREF_LAST_LIVE_CHANNEL];
+     *  later category switches start at the top as before. */
+    internal var liveResumePending = true
+    /** True until the launch has had its one chance to reopen the last film/series. */
+    internal var vodResumePending = true
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
         super.onActivityResult(requestCode, resultCode, data)

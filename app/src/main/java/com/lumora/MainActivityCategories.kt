@@ -1319,9 +1319,14 @@ internal suspend fun MainActivity.applyCategoryFilter(focusFirstLiveChannel: Boo
             // A newer category switch started while this filter ran - its result is the
             // one the user is waiting for, so drop ours rather than overwrite it.
             if (generation != categoryFilterGeneration) return
+            // The launch's first fill lands on last time's channel when this filter has it;
+            // every later fill starts at the top.
+            val resumeId = if (focusFirstLiveChannel && liveResumePending) prefs.getString(PREF_LAST_LIVE_CHANNEL, null) else null
+            if (focusFirstLiveChannel) liveResumePending = false
+            val startPos = filtered.indexOfFirst { it.id == resumeId }.coerceAtLeast(0)
             liveAdapter.submitList(filtered) {
                 if (!focusFirstLiveChannel) return@submitList
-                val first = filtered.firstOrNull() ?: return@submitList
+                val first = filtered.getOrNull(startPos) ?: return@submitList
                 requestPreviewLoad(first)
                 // submitList's commit callback fires once the diff is applied, but the
                 // row's ViewHolder isn't necessarily laid out yet on this same frame - a
@@ -1330,12 +1335,12 @@ internal suspend fun MainActivity.applyCategoryFilter(focusFirstLiveChannel: Boo
                 // request to be queued, the second runs after it's actually done.
                 binding.liveContent.post {
                     binding.liveContent.post {
-                        (binding.liveContent.findViewHolderForAdapterPosition(0) as? LiveGuideAdapter.RowViewHolder)
+                        (binding.liveContent.findViewHolderForAdapterPosition(startPos) as? LiveGuideAdapter.RowViewHolder)
                             ?.requestChannelFocus()
                     }
                 }
             }
-            binding.liveContent.scrollToPosition(0)
+            binding.liveContent.scrollToPosition(startPos)
         }
         1 -> {
             val source = seriesList

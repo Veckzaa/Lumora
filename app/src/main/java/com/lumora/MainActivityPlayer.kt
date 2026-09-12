@@ -618,6 +618,7 @@ internal fun MainActivity.showPlayerFor(
     // A fresh playback session is never a continuation of a user pause.
     userPausedPlayback = false
     nowPlayingChannel = channel
+    if (channel.mediaType == MediaType.LIVE) prefs.edit().putString(PREF_LAST_LIVE_CHANNEL, channel.id).putString(PREF_LAST_WATCHED_KIND, "live").apply()
     // Trakt's `start`. Deliberately after nowPlayingChannel is set - the TMDB lookup that
     // identifies the title runs in the background and checks what is playing when it lands,
     // so a quick surf past a title doesn't scrobble it.

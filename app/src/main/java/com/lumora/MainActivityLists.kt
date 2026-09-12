@@ -220,6 +220,26 @@ internal fun MainActivity.refreshDownloadsList() {
 
 // ── Tabs ───────────────────────────────────────
 
+/** The film/series counterpart of Live TV landing on the last channel: when the most recent
+ *  thing watched was a title, the launch opens its detail page over its tab - Play already
+ *  reads "Resume" there, and Back is the tab's own grid. Runs once per launch, after the
+ *  films/series derive has landed (it finishes after first content), and only if the user
+ *  hasn't gone anywhere in the meantime. A title no longer in the catalogue is skipped. */
+internal fun MainActivity.resumeLastTitle() {
+    if (!vodResumePending) return
+    vodResumePending = false
+    val kind = prefs.getString(PREF_LAST_WATCHED_KIND, null)
+    if (kind != "film" && kind != "series") return
+    val id = prefs.getString(PREF_LAST_VOD, null) ?: return
+    scope.launch {
+        filmsSeriesDeriveJob?.join()
+        if (activeTab != 0 || showingHome || showingDiscover || isPlayerVisible || isContentDetailVisible) return@launch
+        val item = (if (kind == "film") filmList else seriesList).firstOrNull { it.id == id } ?: return@launch
+        selectTab(if (kind == "film") 2 else 1)
+        showContentDetail(item)
+    }
+}
+
 internal fun MainActivity.selectTab(index: Int) {
     activeSettingsOverlay?.dismiss()
     activeSearchOverlay?.dismiss()
@@ -314,7 +334,16 @@ internal fun MainActivity.selectTab(index: Int) {
             // whenever no channel was favourited, which dropped the user into Sports
             // past the categories they'd deliberately pinned to the top.
             val hasFavourites = com.lumora.cache.FavoritesStore.getFavoriteChannelIds(this@selectTab).isNotEmpty()
-            val target = categories.firstOrNull { it.id == FAVOURITES_CATEGORY_ID }?.takeIf { hasFavourites }
+            // First time in this launch: the row holding the channel watched last time, so
+            // the guide reopens on it (applyCategoryFilter lands focus and the preview there).
+            val resume = if (liveResumePending) prefs.getString(PREF_LAST_LIVE_CHANNEL, null)
+                ?.let { id -> liveChannels.firstOrNull { it.id == id } } else null
+            val resumeRow = resume?.let { ch ->
+                categories.firstOrNull { ch.id in it.channelIds }
+                    ?: categories.firstOrNull { it.matchIds.isNotEmpty() && ch.filterKey() in it.matchIds }
+            }
+            val target = resumeRow
+                ?: categories.firstOrNull { it.id == FAVOURITES_CATEGORY_ID }?.takeIf { hasFavourites }
                 ?: categories.firstOrNull { it.pinned }
                 ?: categories.firstOrNull { it.id?.startsWith(DYNAMIC_BUCKET_ID_PREFIX) == true }
             if (target != null) {

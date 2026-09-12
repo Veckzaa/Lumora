@@ -22,6 +22,7 @@
 - **Non-English films and series are shown by default.** "Hide non-English movies/series" used to be on out of the box, which left the French (or any other language) categories nearly empty until you found the setting. It now starts off; the toggle is still in Settings if you want it.
 
 ### Live TV
+- **Lumora reopens where you left off.** Was it a live channel? The guide lands on it, in its own category, already playing in the preview - one press of OK and you are back. A film or a series? Its page opens, with Play (or Resume, for a series in progress) already selected, and Back goes to its tab. No more starting from the top of the list every time.
 - **The guide timeline starts on the half hour.** Open it at 20:04 and the ruler starts at 20:00, with the programme already running drawn from 20:00, instead of a "Now" column cut at the exact minute you opened it. Channels with no programme information now show that as one bar across the row rather than a small box.
 - **Guide blocks sit where the ruler says.** A hole in a channel's schedule now leaves a gap instead of pulling every later programme to the left.
 - **The selected channel card is no longer cut off on the left.** Its zoom-in on selection was being clipped to the row since the guide rework.
