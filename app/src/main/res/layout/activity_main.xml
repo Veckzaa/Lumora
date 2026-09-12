@@ -94,9 +94,11 @@
                      once the tabs stopped fitting (adding Catch Up was enough) the last of
                      them rendered straight over the Settings/Refresh cluster instead of
                      scrolling under it. Clipping is what makes the scroller behave as one.
-                     The focus scale (1.06x, focus_scale_flat) still has room because
-                     clipToPadding stays false and the 4dp vertical padding below gives the
-                     scaled pill a band to bleed into. -->
+                     The focus scale (1.06x, focus_scale_flat) needs its room inside tabBarRow,
+                     not here: a clipping parent cuts each child at the child's own bounds, so
+                     the 4dp top padding this scroller used to carry never helped - a focused
+                     tab's top border was sliced flat at the row's top edge. The row carries
+                     that 4dp now (same bar height). -->
                 <HorizontalScrollView
                     android:id="@+id/tabBar"
                     android:layout_width="0dp"
@@ -104,7 +106,7 @@
                     android:layout_weight="1"
                     android:clipChildren="true"
                     android:clipToPadding="false"
-                    android:paddingVertical="4dp"
+                    android:paddingBottom="4dp"
                     android:fillViewport="true"
                     android:scrollbars="none">
 
@@ -123,6 +125,7 @@
             android:clipChildren="false"
             android:clipToPadding="false"
             android:paddingHorizontal="10dp"
+            android:paddingTop="4dp"
             android:paddingBottom="6dp">
 
             <LinearLayout
