@@ -74,6 +74,7 @@ internal suspend fun MainActivity.resolveEpgPrograms(channelId: String): List<Xt
     val nowSeconds = System.currentTimeMillis() / 1000
     val cached = withContext(Dispatchers.IO) {
         runCatching {
+            wipeGuideFromBeforeClockFix()
             val dao = database.epgProgramDao()
             val fetchedAt = dao.lastFetchedAt(channelId) ?: return@runCatching null
             if (System.currentTimeMillis() - fetchedAt >= EPG_DISK_TTL_MS) return@runCatching null
@@ -106,6 +107,28 @@ internal suspend fun MainActivity.resolveEpgPrograms(channelId: String): List<Xt
         }
     }
     return null
+}
+
+private const val PREF_EPG_CLOCK_FIX_WIPED = "epg_clock_fix_wiped"
+private val epgClockFixLock = Any()
+@Volatile private var epgClockFixDone = false
+
+/** Once per install: guide rows written before the panel-clock fix (see XtreamClient's
+ *  epgLooksLocalAsUtc) can carry the old guess's shift - a whole provider hours off - and would
+ *  keep painting it for their 6 h lifetime. Cleared before the guide's first disk read, which the
+ *  session prune runs too late for, and the XMLTV sync is asked to refill its share. */
+private fun MainActivity.wipeGuideFromBeforeClockFix() {
+    if (epgClockFixDone) return
+    synchronized(epgClockFixLock) {
+        if (epgClockFixDone) return
+        if (!prefs.getBoolean(PREF_EPG_CLOCK_FIX_WIPED, false)) {
+            val dropped = database.epgProgramDao().deleteAll()
+            com.lumora.data.sync.EpgSyncWorker.enqueue(applicationContext)
+            prefs.edit().putBoolean(PREF_EPG_CLOCK_FIX_WIPED, true).apply()
+            android.util.Log.i("LumoraEpg", "guide rows from before the clock fix wiped: $dropped")
+        }
+        epgClockFixDone = true
+    }
 }
 
 /** Writes a freshly fetched guide to disk under the id the guide asked for - not the

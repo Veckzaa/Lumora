@@ -16,6 +16,10 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.net.URLEncoder
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
+import java.util.concurrent.ConcurrentHashMap
 
 private const val TAG = "XtreamClient"
 
@@ -26,9 +30,34 @@ private val WHITESPACE_RUNS = Regex("\\s+")
  * Minimal Xtream Codes API client using OkHttp.
  * Fetches live TV, VOD, and series from an Xtream server.
  */
-/** Per-provider EPG clock-shift estimate (seconds), keyed by server URL - survives the
- *  per-call XtreamClient instances so the guide stays consistent across channels. */
-private val epgShiftSecondsCache = java.util.concurrent.ConcurrentHashMap<String, Long>()
+/** A panel's own clock, read once per provider (keyed by server URL) so it survives the per-call
+ *  XtreamClient instances and every channel's guide agrees. */
+private class PanelClock(
+    /** The panel's epoch minus the device's when read: "now" by the panel, whatever the device says. */
+    val skewSeconds: Long,
+    /** The panel's UTC offset (its local `time_now` against `timestamp_now`), null when it doesn't say. */
+    val offsetSeconds: Long?,
+) {
+    /** Whether its listings are local wall-clock stored as the UTC epoch; null until a channel says. */
+    @Volatile var shifted: Boolean? = null
+}
+
+private val panelClocks = ConcurrentHashMap<String, PanelClock>()
+
+/**
+ * Whether one channel's listings show a panel storing local wall-clock as the UTC epoch: false when
+ * something airs at [nowSeconds] as sent, true when nothing does but something would once moved back
+ * by the panel's [offsetSeconds], null when neither - an off-air channel or a gap says nothing.
+ *
+ * Judged per channel against the panel's clock, not guessed from how far the first programme sits
+ * from the device clock: an off-air channel ("back at 06:00") or a stick whose clock is wrong looks
+ * exactly like a panel hours ahead, and that guess shifted the whole provider's guide by hours.
+ */
+internal fun epgLooksLocalAsUtc(listings: List<XtreamClient.EpgProgram>, offsetSeconds: Long, nowSeconds: Long): Boolean? = when {
+    listings.any { it.isNowAiring(nowSeconds) } -> false
+    offsetSeconds != 0L && listings.any { it.isNowAiring(nowSeconds + offsetSeconds) } -> true
+    else -> null
+}
 
 internal const val LIVE_CONTAINER_HLS = "m3u8"
 internal const val LIVE_CONTAINER_TS = "ts"
@@ -163,12 +192,7 @@ class XtreamClient(private val client: OkHttpClient) {
                 val stop = obj.optString("stop_timestamp", "0").toLongOrNull() ?: return@mapNotNull null
                 EpgProgram(title, start, stop)
             }
-            // Some panels store their local wall-clock as the UTC epoch, so their listings
-            // read hours in the future on a UTC-reckoning device. Shift them so the guide
-            // lines up with the device clock. Computed once per provider and cached.
-            val shift = epgEpochShiftSeconds(provider.serverUrl, listings)
-            if (shift == 0L) listings
-            else listings.map { it.copy(startTimestamp = it.startTimestamp - shift, stopTimestamp = it.stopTimestamp - shift) }
+            alignToPanelClock(provider, listings)
         }
 
     /**
@@ -194,27 +218,51 @@ class XtreamClient(private val client: OkHttpClient) {
                 if (start <= 0L || stop <= start) return@mapNotNull null
                 EpgProgram(title, start, stop)
             }.sortedBy { it.startTimestamp }
-            val shift = epgEpochShiftSeconds(provider.serverUrl, listings)
-            if (shift == 0L) listings
-            else listings.map { it.copy(startTimestamp = it.startTimestamp - shift, stopTimestamp = it.stopTimestamp - shift) }
+            alignToPanelClock(provider, listings)
         }
 
-    /** Estimated per-provider EPG timezone shift, seconds. 0 = panel is spec-compliant. */
-    private fun epgEpochShiftSeconds(serverUrl: String?, listings: List<EpgProgram>): Long {
-        if (serverUrl == null) return 0L
-        epgShiftSecondsCache[serverUrl]?.let { return it }
-        val firstStart = listings.minOfOrNull { it.startTimestamp } ?: return 0L
-        val now = System.currentTimeMillis() / 1000
-        val gap = firstStart - now
-        // A spec-compliant panel lists the current programme first (it starts at or before
-        // now); at worst the first entry is the next one, still within the hour. A gap over
-        // an hour means the panel is clock-shifted - estimate the shift to the nearest
-        // half-hour and cache it, so every channel's guide agrees with the device clock.
-        val shift = if (gap > 3600L) {
-            (Math.round(gap / 1800.0).toLong() * 1800L).coerceIn(3600L, 14 * 3600L)
-        } else 0L
-        epgShiftSecondsCache[serverUrl] = shift
-        return shift
+    /** [panelClocks] for [provider], read from player_api's server_info on first use. Null only when
+     *  the request fails, so it's tried again; a panel that answers without a clock is remembered. */
+    private fun panelClock(provider: Provider): PanelClock? {
+        val key = provider.serverUrl ?: return null
+        panelClocks[key]?.let { return it }
+        // A category opens a dozen guide rows at once; without the lock each found no clock yet and
+        // sent its own login request (7 seen on the emulator). ponytail: one lock for every
+        // provider, so two providers' first reads queue - a lock per server if that ever shows.
+        synchronized(panelClocks) { return panelClocks[key] ?: readPanelClock(provider, key) }
+    }
+
+    private fun readPanelClock(provider: Provider, key: String): PanelClock? {
+        val json = fetchJson(buildApiUrl(provider, "")) ?: return null
+        val info = json.optJSONObject("server_info")
+        val serverNow = info?.optString("timestamp_now")?.toLongOrNull()
+        val clock = if (info == null || serverNow == null) PanelClock(0L, null) else {
+            val local = runCatching {
+                SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+                    .apply { timeZone = TimeZone.getTimeZone("UTC") }
+                    .parse(info.optString("time_now"))?.time?.div(1000)
+            }.getOrNull()
+            // To the quarter hour: the two fields are read a moment apart, and zones sit on quarter hours.
+            PanelClock(serverNow - System.currentTimeMillis() / 1000, local?.let { Math.round((it - serverNow) / 900.0) * 900L })
+        }
+        Log.i(TAG, "EPG panel clock for $key: offset ${clock.offsetSeconds}s, skew ${clock.skewSeconds}s")
+        return clock.also { panelClocks[key] = it }
+    }
+
+    /** Lines [listings] up with real time on panels that store local wall-clock as the UTC epoch - see
+     *  [epgLooksLocalAsUtc]. One channel airing as sent settles the panel as correct, even after an
+     *  earlier one suggested a shift; a shift needs a channel that only makes sense shifted. */
+    private fun alignToPanelClock(provider: Provider, listings: List<EpgProgram>): List<EpgProgram> {
+        if (listings.isEmpty()) return listings
+        val clock = panelClock(provider) ?: return listings
+        val offset = clock.offsetSeconds ?: return listings
+        val verdict = epgLooksLocalAsUtc(listings, offset, System.currentTimeMillis() / 1000 + clock.skewSeconds)
+        if (verdict != null && (!verdict || clock.shifted == null)) {
+            if (clock.shifted != verdict) Log.i(TAG, "EPG for ${provider.serverUrl}: ${if (verdict) "shifting listings by ${-offset}s" else "listings used as sent"}")
+            clock.shifted = verdict
+        }
+        if (clock.shifted != true) return listings
+        return listings.map { it.copy(startTimestamp = it.startTimestamp - offset, stopTimestamp = it.stopTimestamp - offset) }
     }
 
     private fun decodeEpgText(value: String): String? {

@@ -34,4 +34,8 @@ interface EpgProgramDao {
 
     @Query("SELECT COUNT(*) FROM epg_programs")
     suspend fun count(): Int
+
+    /** Blocking, for the one-time wipe that runs under a lock (see wipeGuideFromBeforeClockFix). */
+    @Query("DELETE FROM epg_programs")
+    fun deleteAll(): Int
 }
