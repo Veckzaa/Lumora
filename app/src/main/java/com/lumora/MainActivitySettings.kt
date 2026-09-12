@@ -1283,6 +1283,10 @@ internal fun MainActivity.showProviderSettings() {
             .show()
     }
 
+    // Speed test (MainActivitySpeedTest)
+    dialogView.findViewById<View>(R.id.settingsSpeedInternet).setOnClickListener { runInternetSpeedTest() }
+    dialogView.findViewById<View>(R.id.settingsSpeedProviders).setOnClickListener { runProviderSpeedTest() }
+
     // A/V sync offset settings
     dialogView.findViewById<View>(R.id.settingsAvOffset).setOnClickListener {
         val current = avOffsetManager.getOffset()
@@ -1453,7 +1457,9 @@ internal fun MainActivity.showProviderSettings() {
         // section below it - including the hardcoded selectSection(7) the plugin rail rows use.
         R.id.navSites to R.id.paneSites,
         // Same reason - appended, not slotted in above Sites where the rail shows it.
-        R.id.navTrakt to R.id.paneTrakt
+        R.id.navTrakt to R.id.paneTrakt,
+        // Same again, above About on the rail.
+        R.id.navSpeedTest to R.id.paneSpeedTest
     ).map { (navId, paneId) -> dialogView.findViewById<View>(navId) to dialogView.findViewById<View>(paneId) }
     wireTraktPane(dialogView)
     // Last section chosen - the rail's re-expand pill refocuses it (mirrors the category

@@ -16,6 +16,7 @@
 - **The top bar always fits on the TV.** When the tabs don't fit on one line (in French, or with Discover shown), Search shrinks to its icon, so Settings and Refresh stay on screen without scrolling.
 - **The highlighted tab's frame is whole again.** Its top edge was cut off when the tab grew on focus.
 - **Right from Home goes to Search again.** When Discover isn't shown, the remote's right press on Home did nothing and you had to go around through the screen below.
+- **Speed tests.** Settings → Speed test measures your internet speed and the speed from each of your providers' servers, and "Test this channel" in the player menu checks the stream you're watching. For a channel it says plainly whether the video arrives fast enough to play smoothly (or how short it falls), so you can tell whether buffering comes from your connection or from the provider.
 - **No built-in plugin store.** Lumora no longer connects to a plugin repository on its own, and the first-run screen no longer offers to download "public streaming" plugins; add a store yourself under Settings → Plugins if you want one.
 
 ### Playback

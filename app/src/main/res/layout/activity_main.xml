@@ -2413,7 +2413,7 @@
                     android:contentDescription="@string/close_side_menu"
                     android:focusable="true"
                     android:nextFocusDown="@id/navHome"
-                    android:nextFocusUp="@id/navSettings"
+                    android:nextFocusUp="@id/navTestChannel"
                     android:padding="10dp"
                     android:src="@drawable/ic_x"
                     android:stateListAnimator="@animator/focus_scale"
@@ -2674,7 +2674,7 @@
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:nextFocusUp="@id/navDownloads"
-                android:nextFocusDown="@id/btnCloseSideMenu"
+                android:nextFocusDown="@id/navTestChannel"
                 android:orientation="horizontal"
                 android:paddingHorizontal="10dp"
                 android:stateListAnimator="@animator/focus_scale">
@@ -2694,6 +2694,42 @@
                     android:fontFamily="@font/inter_medium"
                     android:maxLines="1"
                     android:text="@string/settings"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/side_menu_text" />
+            </LinearLayout>
+
+            <!-- Measures what's playing (MainActivitySpeedTest). Last, under the destinations:
+                 it acts on this stream instead of leaving the player. -->
+            <LinearLayout
+                android:id="@+id/navTestChannel"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/side_menu_row_height"
+                android:layout_marginTop="2dp"
+                android:background="@drawable/bg_select_item"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:nextFocusUp="@id/navSettings"
+                android:nextFocusDown="@id/btnCloseSideMenu"
+                android:orientation="horizontal"
+                android:paddingHorizontal="10dp"
+                android:stateListAnimator="@animator/focus_scale">
+
+                <ImageView
+                    android:layout_width="@dimen/side_menu_icon"
+                    android:layout_height="@dimen/side_menu_icon"
+                    android:src="@drawable/ic_speed"
+                    android:tint="@color/text_secondary" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/inter_medium"
+                    android:maxLines="1"
+                    android:text="@string/speed_test_channel"
                     android:textColor="@color/text_secondary"
                     android:textSize="@dimen/side_menu_text" />
             </LinearLayout>

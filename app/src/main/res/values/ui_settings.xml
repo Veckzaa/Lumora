@@ -144,4 +144,22 @@
     <string name="trakt_pushing">Pushing your watched history to Trakt…</string>
     <string name="trakt_synced_both">Synced · %1$d in, %2$d out</string>
     <string name="trakt_synced_both_partial">Synced · %1$d in, %2$d out · %3$d titles unmatched</string>
+
+    <!-- MainActivitySpeedTest.kt - Settings speed test and the player menu's channel test -->
+    <string name="speed_test">Speed test</string>
+    <string name="speed_test_hint">Each test downloads for about 8 seconds. Internet speed uses Cloudflare\'s nearest server; Provider servers plays a live channel from each enabled provider. To test one channel, open the player menu while it plays.</string>
+    <string name="speed_test_internet">Internet speed</string>
+    <string name="speed_test_providers">Provider servers</string>
+    <string name="speed_test_channel">Test this channel</string>
+    <string name="speed_test_running">Testing…</string>
+    <string name="speed_test_progress">Testing… %1$.1f Mbps</string>
+    <string name="speed_test_download">Download speed: %1$.1f Mbps</string>
+    <string name="speed_test_smooth_margin">Smooth - video arrives %1$.1f× faster than it plays</string>
+    <string name="speed_test_smooth">Smooth - video arrives as fast as it plays</string>
+    <string name="speed_test_too_slow">Too slow - only %1$d%% of the video arrives in time, expect buffering</string>
+    <string name="speed_test_stream">The stream is %1$.1f Mbps, received at %2$.1f Mbps</string>
+    <string name="speed_test_server">Server %1$s · replied in %2$d ms</string>
+    <string name="speed_test_nothing">No live channel to test</string>
+    <string name="speed_test_failed">Failed: %1$s</string>
+    <string name="speed_test_no_providers">No provider is enabled</string>
 </resources>

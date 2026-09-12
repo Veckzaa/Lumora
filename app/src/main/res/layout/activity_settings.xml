@@ -149,6 +149,11 @@
                     <TextView style="@style/Widget.Lumora.SettingsNavLabel" android:text="@string/scraper_settings_title" />
                 </LinearLayout>
 
+                <LinearLayout android:id="@+id/navSpeedTest" style="@style/Widget.Lumora.SettingsNavRow" android:background="@drawable/nav_rail_item_glass">
+                    <ImageView android:layout_width="@dimen/settings_nav_icon_size" android:layout_height="@dimen/settings_nav_icon_size" android:src="@drawable/ic_speed" android:tint="@color/nav_icon_tint" />
+                    <TextView style="@style/Widget.Lumora.SettingsNavLabel" android:text="@string/speed_test" />
+                </LinearLayout>
+
                 <LinearLayout android:id="@+id/navAbout" style="@style/Widget.Lumora.SettingsNavRow" android:tag="9" android:background="@drawable/nav_rail_item_glass">
                     <ImageView android:layout_width="@dimen/settings_nav_icon_size" android:layout_height="@dimen/settings_nav_icon_size" android:src="@drawable/ic_about" android:tint="@color/nav_icon_tint" />
                     <TextView style="@style/Widget.Lumora.SettingsNavLabel" android:text="@string/about" />
@@ -1032,6 +1037,48 @@
                         android:textColor="@color/text_primary"
                         android:textSize="@dimen/settings_text_body"
                         android:fontFamily="@font/inter_medium" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Pane: Speed test (MainActivitySpeedTest) -->
+            <LinearLayout
+                android:id="@+id/paneSpeedTest"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/settings_gap" android:text="@string/speed_test" style="@style/TextAppearance.Lumora.SettingsTitle" />
+
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/settings_gap_l" android:text="@string/speed_test_hint" android:textColor="@color/text_secondary" android:textSize="@dimen/settings_text_caption" />
+
+                <LinearLayout
+                    android:id="@+id/settingsSpeedInternet"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingVertical="@dimen/settings_row_padding_vertical"
+                    android:background="@drawable/card_surface_background"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:stateListAnimator="@animator/focus_scale_flat">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/speed_test_internet" android:textColor="@color/text_primary" android:textSize="@dimen/settings_text_body" android:fontFamily="@font/inter_medium" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="@dimen/settings_gap" android:background="@color/divider" />
+
+                <LinearLayout
+                    android:id="@+id/settingsSpeedProviders"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingVertical="@dimen/settings_row_padding_vertical"
+                    android:layout_marginTop="@dimen/settings_gap"
+                    android:background="@drawable/card_surface_background"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:stateListAnimator="@animator/focus_scale_flat">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/speed_test_providers" android:textColor="@color/text_primary" android:textSize="@dimen/settings_text_body" android:fontFamily="@font/inter_medium" />
                 </LinearLayout>
             </LinearLayout>
 

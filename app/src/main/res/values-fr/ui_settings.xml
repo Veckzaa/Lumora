@@ -142,4 +142,22 @@
     <string name="trakt_pushing">Envoi de votre historique vers Trakt…</string>
     <string name="trakt_synced_both">Synchronisé · %1$d entrants, %2$d sortants</string>
     <string name="trakt_synced_both_partial">Synchronisé · %1$d entrants, %2$d sortants · %3$d titres non associés</string>
+
+    <!-- MainActivitySpeedTest.kt - test de vitesse des Paramètres et test de chaîne du menu du lecteur -->
+    <string name="speed_test">Test de vitesse</string>
+    <string name="speed_test_hint">Chaque test télécharge pendant environ 8 secondes. Vitesse Internet utilise le serveur Cloudflare le plus proche ; Serveurs des fournisseurs lit une chaîne en direct de chaque fournisseur activé. Pour tester une chaîne, ouvrez le menu du lecteur pendant qu\'elle joue.</string>
+    <string name="speed_test_internet">Vitesse Internet</string>
+    <string name="speed_test_providers">Serveurs des fournisseurs</string>
+    <string name="speed_test_channel">Tester cette chaîne</string>
+    <string name="speed_test_running">Test en cours…</string>
+    <string name="speed_test_progress">Test en cours… %1$.1f Mbit/s</string>
+    <string name="speed_test_download">Débit : %1$.1f Mbit/s</string>
+    <string name="speed_test_smooth_margin">Fluide - la vidéo arrive %1$.1f× plus vite qu\'elle ne joue</string>
+    <string name="speed_test_smooth">Fluide - la vidéo arrive aussi vite qu\'elle joue</string>
+    <string name="speed_test_too_slow">Trop lent - seulement %1$d %% de la vidéo arrive à temps, attendez-vous à des coupures</string>
+    <string name="speed_test_stream">Le flux fait %1$.1f Mbit/s, reçu à %2$.1f Mbit/s</string>
+    <string name="speed_test_server">Serveur %1$s · répond en %2$d ms</string>
+    <string name="speed_test_nothing">Aucune chaîne en direct à tester</string>
+    <string name="speed_test_failed">Échec : %1$s</string>
+    <string name="speed_test_no_providers">Aucun fournisseur activé</string>
 </resources>

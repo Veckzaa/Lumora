@@ -119,6 +119,7 @@ internal fun MainActivity.setupPlayerControls() {
     // Settings lives behind the browse screen's gear button, which the player covers -
     // this is the only way into it without backing out of playback by hand.
     binding.navSettings.setOnClickListener { closeSideMenu(); hidePlayer(); showProviderSettings() }
+    binding.navTestChannel.setOnClickListener { closeSideMenu(); runChannelSpeedTest() }
 
     // Category drill-down list under the expanded section row.
     sideMenuCategoryAdapter = SideMenuCategoryAdapter(onCategoryClick = ::onSideMenuCategoryClicked)
