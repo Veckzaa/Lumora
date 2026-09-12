@@ -4,31 +4,29 @@ import android.content.Context
 import android.util.Log
 import com.lumora.BaseApplication
 import okhttp3.Request
-import java.io.File
 
 /**
  * Checks for app updates against one Dropbox file.
  *
- * Deployment is "replace the APK behind [UPDATE_URL]" (same name, Replace; the share link
- * follows the file id): no release tags, no version bumps. A HEAD on the direct link returns
- * an `etag` that changes on every upload, the file name, and the size - but only with
- * `Accept-Encoding: identity`; with OkHttp's default gzip Dropbox drops the etag and length.
+ * Deployment is "replace the APK behind [UPDATE_URL] and rename it" (Replace keeps the share
+ * link, which follows the file id): the file name is the version - lumoraV1.apk, lumoraV1.1.apk.
+ * Upload the armeabi-v7a APK: every Fire TV runs it, at half the universal's size.
+ * A HEAD on the direct link returns that name in Content-Disposition, but only with
+ * `Accept-Encoding: identity`; with OkHttp's default gzip Dropbox drops most headers.
  *
- * The etag of the build this install came from is remembered; a different one on Dropbox
- * means a newer upload. Size alone is not enough (every incremental debug build came out the
- * same size: AGP's packager rewrites entries in place and leaves slack), but a size that differs
- * from the installed APK - Android keeps it byte for byte at `sourceDir` - is proof of a
- * different build, which covers a fresh sideload with no remembered etag: it is offered the
- * update if Dropbox already holds something else, and otherwise just records what's there.
+ * The name of the build this install came from is remembered, and a different name on Dropbox
+ * is the update. Nothing else on the link is usable: the etag turned out to follow the file,
+ * not its content (a Replace kept it), and a size that merely differs from the installed APK
+ * says "different build", not "newer" - it nagged every launch on any build that wasn't the
+ * exact bytes on Dropbox, including ones built after them. A fresh sideload just records the
+ * name it finds, so keep the initial-install APK the same build as the update link's.
  */
 class AppUpdateChecker(private val context: Context) {
 
     private val TAG = "AppUpdate"
 
     data class UpdateInfo(
-        /** Dropbox's etag for the upload; shown nowhere, stored by [markInstalled]. */
-        val build: String,
-        /** The file's current name on Dropbox, e.g. "lumoraV2.apk", for the prompt. */
+        /** The file's current name on Dropbox, e.g. "lumoraV1.1.apk"; the version as far as the app knows. */
         val name: String,
         val currentVersion: String,
         val downloadUrl: String,
@@ -44,25 +42,18 @@ class AppUpdateChecker(private val context: Context) {
                     Log.w(TAG, "Update check: HTTP ${response.code}")
                     return@use null
                 }
-                val build = response.header("ETag")?.trim('"') ?: return@use null
-                val size = response.header("Content-Length")?.toLongOrNull() ?: 0L
                 val name = response.header("Content-Disposition")
-                    ?.let { Regex("filename=\"?([^\";]+)").find(it)?.groupValues?.get(1) } ?: "Lumora.apk"
+                    ?.let { Regex("filename=\"?([^\";]+)").find(it)?.groupValues?.get(1) }
+                    ?: return@use null
                 val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                val installed = prefs.getString(KEY_BUILD, null)
-                val installedSize = File(context.applicationInfo.sourceDir).length()
-                val newer = when {
-                    size > 0 && size != installedSize -> true
-                    installed == null -> false
-                    else -> installed != build
-                }
-                Log.i(TAG, "Dropbox: $name $size bytes build $build; installed $installedSize bytes build $installed -> ${if (newer) "update" else "current"}")
-                if (installed == null && !newer) prefs.edit().putString(KEY_BUILD, build).apply()
+                val installed = prefs.getString(KEY_NAME, null)
+                val newer = installed != null && installed != name
+                Log.i(TAG, "Dropbox: $name; installed: $installed -> ${if (newer) "update" else "current"}")
+                if (installed == null) prefs.edit().putString(KEY_NAME, name).apply()
                 val currentVersion = try {
                     context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
                 } catch (e: Exception) { "1.0" }
                 UpdateInfo(
-                    build = build,
                     name = name,
                     currentVersion = currentVersion,
                     downloadUrl = UPDATE_URL,
@@ -77,17 +68,17 @@ class AppUpdateChecker(private val context: Context) {
 
     companion object {
         /** Direct (`dl=1`) Dropbox link to the current build. Upload the new APK over this file
-         *  (same name, Replace) so the link keeps pointing at it; a new upload is a new link.
-         *  Renaming it afterwards is fine, the name only shows in the prompt. */
+         *  (Replace) so the link keeps pointing at it, then rename it: the name change is what
+         *  every install sees as the update. A fresh upload would be a new link. */
         const val UPDATE_URL =
             "https://www.dropbox.com/scl/fi/f1sewaklpbpjc1dra235g/lumoraV1.apk?rlkey=1iua0e0ueohisostvqdm3rvvr&st=25bsoozl&dl=1"
         private const val PREFS = "app_update"
-        private const val KEY_BUILD = "installed_build"
+        private const val KEY_NAME = "installed_name"
 
         /** Called once the update's download is handed to the installer: the next launch is
-         *  that build, and without this the same upload would be offered again every start. */
-        fun markInstalled(context: Context, build: String) {
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_BUILD, build).apply()
+         *  that build, and without this the same file would be offered again every start. */
+        fun markInstalled(context: Context, name: String) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_NAME, name).apply()
         }
     }
 }

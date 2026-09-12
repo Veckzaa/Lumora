@@ -1395,7 +1395,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Checked once per launch, straight off GitHub Releases - not tucked inside Settings.
+    /** Checked once per launch, straight off the Dropbox file - not tucked inside Settings.
      *
      *  Never on the car screen: the prompt would open on top of the driving warning, where a
      *  rotary head unit has one focused button and it is "Update" - and that route ends in the
@@ -1410,7 +1410,7 @@ class MainActivity : AppCompatActivity() {
             AlertDialog.Builder(this@MainActivity)
                 .setTitle(getString(R.string.plug_update_available))
                 .setMessage(getString(R.string.plug_update_available_message, info.name, info.currentVersion))
-                .setPositiveButton(getString(R.string.update)) { _, _ -> downloadAndInstallUpdate(info.downloadUrl, info.build) }
+                .setPositiveButton(getString(R.string.update)) { _, _ -> downloadAndInstallUpdate(info.downloadUrl, info.name) }
                 .setNegativeButton(getString(R.string.plug_later), null)
                 .show()
         }
@@ -1418,7 +1418,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Downloads the release APK via DownloadManager, then hands it to the system package
      *  installer as soon as the download finishes - no separate "tap to install" step. */
-    internal fun downloadAndInstallUpdate(downloadUrl: String, build: String) {
+    internal fun downloadAndInstallUpdate(downloadUrl: String, name: String) {
         val installer = AppUpdateInstaller(this)
         val downloadId = installer.downloadApk(downloadUrl)
         Toast.makeText(this, getString(R.string.plug_downloading_update), Toast.LENGTH_SHORT).show()
@@ -1432,7 +1432,7 @@ class MainActivity : AppCompatActivity() {
                 if (installer.isDownloadComplete(downloadId)) {
                     val path = installer.getDownloadedFilePath(downloadId)
                     if (path != null) {
-                        AppUpdateChecker.markInstalled(this@MainActivity, build)
+                        AppUpdateChecker.markInstalled(this@MainActivity, name)
                         // If the user had to be sent to grant "install unknown apps",
                         // installApk() returns false - retry once automatically after
                         // they've had time to flip it, instead of making them come back
