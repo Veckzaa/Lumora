@@ -2,6 +2,7 @@ package com.lumora.data.update
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
 import android.util.Log
 import com.lumora.BaseApplication
 import okhttp3.Request
@@ -55,7 +56,9 @@ class AppUpdateChecker(private val context: Context) {
         val downloadUrl: String,
         val isUpdateAvailable: Boolean,
         /** This update was handed to the installer before and never installed (cancelled or failed). */
-        val lastAttemptFailed: Boolean = false
+        val lastAttemptFailed: Boolean = false,
+        /** The published build can't run on this device, so it is never offered here. */
+        val incompatible: Boolean = false
     )
 
     suspend fun checkForUpdate(): UpdateInfo? {
@@ -70,6 +73,14 @@ class AppUpdateChecker(private val context: Context) {
                 val name = response.header("Content-Disposition")
                     ?.let { Regex("filename=\"?([^\";]+)").find(it)?.groupValues?.get(1) }
                     ?: return@use null
+                // The Dropbox file is the armeabi-v7a build. A device that can't run it - the x86
+                // FireTV_API25 AVD, a 64-bit-only phone - gets "app isn't compatible" from the
+                // installer, and with the install check below it would be offered the same download
+                // again on every launch. Nothing is recorded for it either: it isn't that build.
+                if (UPDATE_ABI !in Build.SUPPORTED_ABIS) {
+                    Log.i(TAG, "Dropbox: $name is $UPDATE_ABI; this device runs ${Build.SUPPORTED_ABIS.joinToString()} - not offered")
+                    return@use UpdateInfo(name, "", UPDATE_URL, isUpdateAvailable = false, incompatible = true)
+                }
                 val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 val attemptFailed = settlePendingInstall(prefs)
                 val installed = prefs.getString(KEY_NAME, null)
@@ -117,6 +128,8 @@ class AppUpdateChecker(private val context: Context) {
          *  every install sees as the update. A fresh upload would be a new link. */
         const val UPDATE_URL =
             "https://www.dropbox.com/scl/fi/f1sewaklpbpjc1dra235g/lumoraV1.apk?rlkey=1iua0e0ueohisostvqdm3rvvr&st=25bsoozl&dl=1"
+        /** What the file behind [UPDATE_URL] is built for - see the class comment. */
+        private const val UPDATE_ABI = "armeabi-v7a"
         private const val PREFS = "app_update"
         private const val KEY_NAME = "installed_name"
         private const val KEY_PENDING_NAME = "pending_name"

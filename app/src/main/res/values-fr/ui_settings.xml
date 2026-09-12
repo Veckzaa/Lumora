@@ -167,5 +167,6 @@
     <!-- MainActivitySettings.kt - À propos : revenir à la version d'avant la dernière mise à jour -->
     <string name="rollback_to">Revenir à %1$s</string>
     <string name="rollback">Revenir</string>
+    <string name="update_not_for_device">La mise à jour publiée est la version Fire TV, que cet appareil ne peut pas installer.</string>
     <string name="rollback_message">Réinstalle la version que vous aviez avant la dernière mise à jour. Vos chaînes et réglages sont conservés. La version plus récente sera proposée à nouveau à la prochaine vérification.</string>
 </resources>

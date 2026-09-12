@@ -1567,6 +1567,7 @@ internal fun MainActivity.showProviderSettings() {
             checkUpdateLabel.text = getString(R.string.check_for_updates)
             when {
                 info == null -> Toast.makeText(this@showProviderSettings, getString(R.string.sett_couldnt_check_updates), Toast.LENGTH_SHORT).show()
+                info.incompatible -> Toast.makeText(this@showProviderSettings, getString(R.string.update_not_for_device), Toast.LENGTH_LONG).show()
                 info.isUpdateAvailable && info.downloadUrl.isNotBlank() -> {
                     AlertDialog.Builder(this@showProviderSettings)
                         .setTitle(getString(R.string.sett_update_available))

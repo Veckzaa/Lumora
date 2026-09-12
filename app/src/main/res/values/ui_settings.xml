@@ -169,5 +169,6 @@
     <!-- MainActivitySettings.kt - About: go back to the build before the last update -->
     <string name="rollback_to">Go back to %1$s</string>
     <string name="rollback">Go back</string>
+    <string name="update_not_for_device">The published update is the Fire TV build, which this device can\'t install.</string>
     <string name="rollback_message">Reinstalls the version you had before the last update. Your channels and settings stay. The newer version is offered again at the next update check.</string>
 </resources>
