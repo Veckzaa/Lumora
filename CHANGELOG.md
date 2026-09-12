@@ -15,6 +15,7 @@
 - **Half the download on Fire TV.** Lumora now comes as one APK per processor type: the Fire TV Stick build is 20 MB instead of 36 MB, because it no longer carries the playback libraries for three other kinds of processor it can never use. The universal APK is still there for phones.
 - **The top bar always fits on the TV.** When the tabs don't fit on one line (in French, or with Discover shown), Search shrinks to its icon, so Settings and Refresh stay on screen without scrolling.
 - **The highlighted tab's frame is whole again.** Its top edge was cut off when the tab grew on focus.
+- **Right from Home goes to Search again.** When Discover isn't shown, the remote's right press on Home did nothing and you had to go around through the screen below.
 - **No built-in plugin store.** Lumora no longer connects to a plugin repository on its own, and the first-run screen no longer offers to download "public streaming" plugins; add a store yourself under Settings → Plugins if you want one.
 
 ### Playlists

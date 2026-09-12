@@ -227,6 +227,7 @@ internal fun MainActivity.applySimpleModeUi() {
         // Back to the full-row chain: Live -> Series -> Films -> Home -> Discover.
         binding.tabLive.nextFocusLeftId = R.id.tabDownloads
         binding.tabLive.nextFocusRightId = R.id.tabSeries
+        binding.tabHome.nextFocusLeftId = R.id.tabFilms
     }
     updateChromeFocusChain()
 }
@@ -243,7 +244,9 @@ internal fun MainActivity.applySimpleModeUi() {
 internal fun MainActivity.updateDiscoverTabVisibility() {
     val available = !hasProviderEnabled() || hasProviderlessSource()
     binding.tabDiscover.visibility = if (available) View.VISIBLE else View.GONE
-    binding.btnSearch.nextFocusLeftId = if (available) R.id.tabDiscover else R.id.tabFilms
+    // Home sits between Films and Discover, so it's Home that Search and Discover's gap join up.
+    binding.btnSearch.nextFocusLeftId = if (available) R.id.tabDiscover else R.id.tabHome
+    binding.tabHome.nextFocusRightId = if (available) R.id.tabDiscover else R.id.btnSearch
     // The tab vanishing under the user (a provider enabled while they are in Discover)
     // must not leave the pane on screen with no way back to it.
     if (!available && showingDiscover) selectTab(0)
