@@ -775,7 +775,8 @@ internal fun MainActivity.showPlayerFor(
                     resolved,
                     STREAM_USER_AGENT,
                     audio = audio,
-                    preferAudioLanguage = startVersion.mediaType != MediaType.LIVE
+                    preferAudioLanguage = startVersion.mediaType != MediaType.LIVE,
+                    live = startVersion.mediaType == MediaType.LIVE
                 )
             }
             resumeFromMs?.let { playerManager.seekTo(it) }
@@ -919,7 +920,8 @@ internal fun MainActivity.showPlayerFor(
                     // The fresh resolve may know the audio category even when the original
                     // caller didn't (or better), so its hint wins.
                     audio = resolved.audio ?: audio,
-                    preferAudioLanguage = startVersion.mediaType != MediaType.LIVE
+                    preferAudioLanguage = startVersion.mediaType != MediaType.LIVE,
+                    live = startVersion.mediaType == MediaType.LIVE
                 )
                 is ResolveResult.Failed -> {
                     binding.bufferingSpinner.visibility = View.GONE
@@ -935,6 +937,7 @@ internal fun MainActivity.showPlayerFor(
                 headers = startVersion.streamHeaders,
                 audio = audio,
                 preferAudioLanguage = startVersion.mediaType != MediaType.LIVE,
+                live = startVersion.mediaType == MediaType.LIVE,
                 maintainTokenQuery = maintainTokenQuery,
                 mimeType = mimeType,
                 // Set only by playDownload for a completed HLS download, which replays its
@@ -1082,7 +1085,8 @@ internal fun MainActivity.retryJellyfinPlayback() {
             channel.streamUserAgent,
             subtitles = resolved?.let(::externalSubtitlesFor) ?: emptyList(),
             startPositionMs = startAt,
-            preferAudioLanguage = channel.mediaType != MediaType.LIVE
+            preferAudioLanguage = channel.mediaType != MediaType.LIVE,
+            live = channel.mediaType == MediaType.LIVE
         )
         jellyfinPlaySession = resolved
         jellyfinPlayingItemId = itemId
@@ -1250,7 +1254,8 @@ internal fun MainActivity.switchToVersionIndex(index: Int, message: String? = nu
         next.url,
         next.streamUserAgent,
         headers = next.streamHeaders,
-        preferAudioLanguage = next.mediaType != MediaType.LIVE
+        preferAudioLanguage = next.mediaType != MediaType.LIVE,
+        live = next.mediaType == MediaType.LIVE
     )
 }
 
@@ -1860,7 +1865,7 @@ internal fun MainActivity.checkForPreviewBlackFrame() {
     if (nextIndex >= previewVersionGroup.size) return // nothing else to try - leave it, stop watching
     previewVersionIndex = nextIndex
     val next = previewVersionGroup[nextIndex]
-    ensurePreviewPlayer().playUrl(next.url, next.streamUserAgent)
+    ensurePreviewPlayer().playUrl(next.url, next.streamUserAgent, live = true)
     mainHandler.postDelayed(previewBlackFrameCheckRunnable, BLACK_FRAME_CHECK_INTERVAL_MS)
 }
 

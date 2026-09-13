@@ -23,6 +23,7 @@
 - **No built-in plugin store.** Lumora no longer connects to a plugin repository on its own, and the first-run screen no longer offers to download "public streaming" plugins; add a store yourself under Settings → Plugins if you want one.
 
 ### Playback
+- **Live channels no longer freeze when the provider drops the connection.** Some providers cut a channel's connection every few minutes, even on a good network. The picture then froze for several seconds while the whole stream reloaded, or stayed frozen until you changed channel. Lumora now reconnects in the background and keeps playing the video it already has, so a cut shows as a short pause at most, if at all.
 - **Films and series play at their own frame rate.** On a Fire TV 4K, Cube or Android TV, Lumora now asks the TV to switch to a refresh rate that fits the video - 24 Hz for a film instead of holding it on 60 - so slow pans stop stuttering. On Fire TV it needs "Match original frame rate" on in the system Display settings; it never happens on live channels (the switch blanks the screen for a moment). Off switch in Settings → Playback.
 
 ### Playlists

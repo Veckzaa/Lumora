@@ -398,7 +398,7 @@ internal fun MainActivity.loadPreview(channel: Channel) {
     previewVersionGroup = liveVersions[channel.id] ?: listOf(channel)
     previewVersionIndex = previewVersionGroup.indexOfFirst { !isStreamDead(it) }.takeIf { it >= 0 } ?: 0
     val startVersion = previewVersionGroup.getOrNull(previewVersionIndex) ?: channel
-    ensurePreviewPlayer().playUrl(startVersion.url, startVersion.streamUserAgent)
+    ensurePreviewPlayer().playUrl(startVersion.url, startVersion.streamUserAgent, live = true)
     startPreviewBlackFrameWatch()
 }
 

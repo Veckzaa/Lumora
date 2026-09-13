@@ -2,6 +2,7 @@ package com.lumora.player
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import android.view.SurfaceView
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -10,6 +11,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.datasource.DataSource
@@ -224,7 +226,12 @@ class PlayerManager(
          * out of its cache. Every other argument that shapes a network request (headers, user
          * agent, token query) is then irrelevant, since nothing is fetched.
          */
-        dataSourceOverride: DataSource.Factory? = null
+        dataSourceOverride: DataSource.Factory? = null,
+        /**
+         * A live channel: its endless progressive stream (.ts over HTTP, not HLS) reconnects in
+         * place when the server drops or closes it - see [LiveReconnectingDataSource].
+         */
+        live: Boolean = false
     ) {
         // A pending coroutine can outlive the activity (release() only runs at suspension
         // points); calling into a released ExoPlayer throws. Refuse rather than crash.
@@ -235,7 +242,7 @@ class PlayerManager(
         lastPlayCall = {
             playUrl(
                 url, userAgent, subtitles, startPositionMs, headers, audio, preferAudioLanguage,
-                maintainTokenQuery, mimeType, dataSourceOverride
+                maintainTokenQuery, mimeType, dataSourceOverride, live
             )
         }
         // A retry resumes where the failed play had reached; the recorded call keeps the
@@ -243,7 +250,14 @@ class PlayerManager(
         @Suppress("NAME_SHADOWING")
         val startPositionMs = pendingReplayPositionMs?.also { pendingReplayPositionMs = null } ?: startPositionMs
         val dataSourceFactory = dataSourceOverride
-            ?: buildDataSourceFactory(userAgent, headers, maintainTokenQuery)
+            ?: buildDataSourceFactory(userAgent, headers, maintainTokenQuery).let { network ->
+                // HLS and DASH reconnect per segment on their own, and a segment's end is real.
+                if (live && Util.inferContentTypeForUriAndMimeType(Uri.parse(url), mimeType) == C.CONTENT_TYPE_OTHER) {
+                    DataSource.Factory { LiveReconnectingDataSource(network.createDataSource()) { Log.w("LumoraPlayer", it) } }
+                } else {
+                    network
+                }
+            }
 
         val mediaItemBuilder = MediaItem.Builder()
             .setUri(Uri.parse(url))
