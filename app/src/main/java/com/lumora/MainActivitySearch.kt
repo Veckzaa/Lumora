@@ -1,5 +1,7 @@
 package com.lumora
 
+import com.lumora.util.searchKey
+
 import android.content.Context
 import android.animation.AnimatorInflater
 import androidx.core.content.res.ResourcesCompat
@@ -267,7 +269,7 @@ internal fun MainActivity.showSearchDialog(initialQuery: String? = null) {
  *  "Batman"), plain substring last. Word-boundary keeps a query like "man" usable on
  *  a catalog with thousands of vaguely-matching substrings instead of it being buried. */
 internal fun MainActivity.searchRank(name: String, query: String, boundaryRegex: Regex): Int {
-    val lower = name.lowercase()
+    val lower = searchKey(name)
     return when {
         lower == query -> 0
         lower.startsWith(query) -> 1
@@ -285,7 +287,7 @@ internal fun MainActivity.runSearch(query: String, runId: Int, adapter: SearchRe
     scope.launch {
         val filter = searchFilter
         val mediaResults = withContext(Dispatchers.Default) {
-            val lower = query.lowercase()
+            val lower = searchKey(query)
             // P1-2: compiled once per query, not per comparison - the boundary regex was
             // built inside searchRank (called by the comparator), so sorting ~50k titles
             // compiled ~1.5M Patterns and cost seconds on a TV stick.
@@ -297,7 +299,7 @@ internal fun MainActivity.runSearch(query: String, runId: Int, adapter: SearchRe
                 MainActivity.SearchFilter.SERIES -> seriesList
             }
             source
-                .filter { it.name.lowercase().contains(lower) }
+                .filter { searchKey(it.name).contains(lower) }
                 .sortedWith(compareBy({ searchRank(it.name, lower, boundaryRegex) }, { it.name.lowercase() }))
                 .map { SearchResultItem.Media(it) }
         }
@@ -358,7 +360,7 @@ internal fun MainActivity.runSearch(query: String, runId: Int, adapter: SearchRe
  *  catalog, and each fetch is a network call. */
 internal suspend fun MainActivity.buildEpgSearchResults(query: String, filter: MainActivity.SearchFilter): List<SearchResultItem.Epg> {
     if (filter == MainActivity.SearchFilter.MOVIE || filter == MainActivity.SearchFilter.SERIES) return emptyList()
-    val lower = query.lowercase()
+    val lower = searchKey(query)
     val nowSeconds = System.currentTimeMillis() / 1000
     val results = linkedMapOf<String, SearchResultItem.Epg>()
 
@@ -373,11 +375,11 @@ internal suspend fun MainActivity.buildEpgSearchResults(query: String, filter: M
     }
 
     fun addPrograms(channel: Channel, programs: List<XtreamClient.EpgProgram>) {
-        val nameMatches = channel.name.lowercase().contains(lower)
+        val nameMatches = searchKey(channel.name).contains(lower)
         var addedUpcoming = false
         for (p in programs) {
             when {
-                p.title.lowercase().contains(lower) -> add(channel, p)
+                searchKey(p.title).contains(lower) -> add(channel, p)
                 nameMatches && p.isNowAiring(nowSeconds) -> add(channel, p)
                 nameMatches && !addedUpcoming && p.startTimestamp > nowSeconds -> {
                     add(channel, p)
@@ -395,7 +397,7 @@ internal suspend fun MainActivity.buildEpgSearchResults(query: String, filter: M
     }
     // On-demand: name-matching channels that have no guide data cached yet.
     val toFetch = liveChannels.asSequence()
-        .filter { it.name.lowercase().contains(lower) && !EpgListCache.has(it.id) }
+        .filter { searchKey(it.name).contains(lower) && !EpgListCache.has(it.id) }
         .distinctBy { it.id }
         .take(MAX_EPG_SEARCH_FETCHES)
         .toList()

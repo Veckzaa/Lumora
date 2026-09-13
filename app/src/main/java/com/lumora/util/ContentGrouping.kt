@@ -191,6 +191,21 @@ fun normalizeTitleForGrouping(name: String): String = normalizeTitleMemo.memoize
     n.lowercase()
 }
 
+/**
+ * A title or query the way search compares them: lowercase, accents dropped. Search used plain
+ * lowercase, so "Indefendable" never found the provider's "Indéfendable (FR)" - reported as the
+ * series missing from the catalogue, since an é is a long press away on a TV remote's keyboard.
+ */
+fun searchKey(text: String): String {
+    val lower = text.lowercase()
+    // Most titles are plain ASCII with nothing to fold: skip the decomposition for them.
+    if (lower.all { it.code < 0x80 }) return lower
+    val decomposed = java.text.Normalizer.normalize(lower, java.text.Normalizer.Form.NFD)
+    return buildString(decomposed.length) {
+        for (c in decomposed) if (Character.getType(c) != Character.NON_SPACING_MARK.toInt()) append(c)
+    }
+}
+
 /** Pulls just the leading source tag ("4K-D+", "TOP") off a title, for labeling version-picker chips. */
 fun extractLeadingTag(name: String): String? =
     leadingTagMatch(name)?.trimEnd('-', ' ')?.trim()
