@@ -987,7 +987,7 @@ class MainActivity : AppCompatActivity() {
         isReminderSet = { key -> ReminderStore.get(this, key) != null },
         hasAnyReminder = { !ReminderStore.isEmpty(this) },
         fetchPrograms = { channelId -> resolveEpgPrograms(channelId) }
-    )
+    ).apply { topRowFocusUpTargetId = R.id.tabLive }
     internal val seriesShelfAdapter = ShelfAdapter(
         // onHomeItemClick, not playItem: the Continue Watching shelf row holds EPISODES,
         // and playItem's SERIES branch would open the episode itself as a dead detail page.
@@ -1045,7 +1045,7 @@ class MainActivity : AppCompatActivity() {
             // hide is reachable too.
             if (activeTab == 0) togglePinCategory(category) else showCategoryContextMenu(category)
         }
-    )
+    ).apply { onRowRight = { focusLiveGuide() } }
     internal val downloadAdapter = DownloadAdapter(
         onClick = { record -> playDownload(record) },
         onDelete = { record -> deleteDownload(record) }

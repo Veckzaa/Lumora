@@ -2035,7 +2035,7 @@ internal fun MainActivity.hidePlayer() {
                 }
                 categoryAdapter.setSelected(selectedRowId)
                 applyCategoryFilter()
-                previewTarget.let { scrollLiveListTo(it) }
+                previewTarget.let { scrollLiveListTo(it, focus = true) }
             }
         } else {
             // Scroll the channel list so the last-watched channel is visible when
@@ -2043,7 +2043,7 @@ internal fun MainActivity.hidePlayer() {
             // applyCategoryFilter scrolled to on tab switch). The list may have a
             // category filter active, so find the position in the adapter list
             // rather than assuming liveChannels order.
-            previewTarget?.let { scrollLiveListTo(it) }
+            previewTarget?.let { scrollLiveListTo(it, focus = true) }
         }
     }
     // Whatever just finished playing may have changed Continue Watching - refresh

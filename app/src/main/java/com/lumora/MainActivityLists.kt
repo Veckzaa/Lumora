@@ -376,7 +376,7 @@ internal fun MainActivity.selectTab(index: Int) {
 
 internal fun MainActivity.buildGuideHeader() {
     val density = resources.displayMetrics.density
-    val slotWidthPx = (30 * LiveGuideAdapter.MINUTE_WIDTH_DP * density).toInt()
+    val slotPx = 30 * LiveGuideAdapter.MINUTE_WIDTH_DP * density
     val timeFmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
     // The timeline starts on the half hour (20:00 for a guide opened at 20:04), and the rows
     // draw from the same origin - a programme already running is clipped to it.
@@ -385,7 +385,7 @@ internal fun MainActivity.buildGuideHeader() {
     val calendar = java.util.Calendar.getInstance().apply { timeInMillis = origin * 1000 }
 
     binding.guideHeaderRow.removeAllViews()
-    repeat(24) {
+    repeat(LiveGuideAdapter.TIMELINE_HOURS * 2) { slot ->
         val label = TextView(this).apply {
             text = timeFmt.format(calendar.time)
             setTextColor(getColor(R.color.text_tertiary))
@@ -394,7 +394,12 @@ internal fun MainActivity.buildGuideHeader() {
             setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.guide_program_text))
             gravity = android.view.Gravity.CENTER_VERTICAL
             setPadding((6 * density).toInt(), 0, 0, 0)
-            layoutParams = LinearLayout.LayoutParams(slotWidthPx, LinearLayout.LayoutParams.MATCH_PARENT)
+            // Rounded from the running total, the way the rows place their blocks, so the two
+            // can't drift apart on a density where a slot isn't a whole number of px.
+            layoutParams = LinearLayout.LayoutParams(
+                Math.round((slot + 1) * slotPx) - Math.round(slot * slotPx),
+                LinearLayout.LayoutParams.MATCH_PARENT
+            )
         }
         binding.guideHeaderRow.addView(label)
         calendar.add(java.util.Calendar.MINUTE, 30)

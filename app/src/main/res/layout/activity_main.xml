@@ -1128,8 +1128,11 @@
                                 android:layout_height="match_parent"
                                 android:layout_marginEnd="10dp" />
 
+                            <!-- Not focusable: up from the guide's first row landed on the ruler,
+                                 which does nothing with focus. -->
                             <HorizontalScrollView
                                 android:id="@+id/guideHeaderScroll"
+                                android:focusable="false"
                                 android:layout_width="0dp"
                                 android:layout_height="match_parent"
                                 android:layout_weight="1"

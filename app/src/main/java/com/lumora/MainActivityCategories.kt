@@ -1633,6 +1633,12 @@ internal fun MainActivity.setupTabs() {
         if (onLiveSection && catchupChannels().isNotEmpty()) showLiveTabMenu()
         else selectTab(0)
     }
+    // Down from Live TV goes back into the guide it sits over, not to the nearest view below (the
+    // category sidebar's top row) - up from the guide's first row lands here, so this undoes it.
+    binding.tabLive.setOnKeyListener { _, keyCode, event ->
+        event.action == android.view.KeyEvent.ACTION_DOWN && keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN &&
+            focusLiveGuide()
+    }
     binding.tabSeries.setOnClickListener { selectTab(1) }
     binding.tabFilms.setOnClickListener { selectTab(2) }
     binding.tabDiscover.setOnClickListener { showingHome = false; selectDiscover() }

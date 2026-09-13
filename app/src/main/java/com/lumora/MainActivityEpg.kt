@@ -35,9 +35,19 @@ internal fun MainActivity.dynamicCategoryFor(channel: Channel): CategoryFilter? 
 internal fun MainActivity.parentOfCategoryRow(rowId: String?): String? =
     rowId?.let { id -> categoryChildrenCache.entries.firstOrNull { (_, kids) -> kids.any { it.id == id } }?.key }
 
-internal fun MainActivity.scrollLiveListTo(channel: Channel) {
+/** Scrolls the guide to [channel]; with [focus], also puts D-pad focus on its row once the scroll
+ *  has laid it out. Back from the player left focus on the Live TV tab, and a second Back from
+ *  there went on to Home. */
+internal fun MainActivity.scrollLiveListTo(channel: Channel, focus: Boolean = false) {
     val pos = liveAdapter.currentList.indexOfFirst { it.id == channel.id }
-    if (pos >= 0) binding.liveContent.post { binding.liveContent.scrollToPosition(pos) }
+    if (pos < 0) return
+    binding.liveContent.post {
+        binding.liveContent.scrollToPosition(pos)
+        if (focus) binding.liveContent.post {
+            (binding.liveContent.findViewHolderForAdapterPosition(pos) as? com.lumora.adapter.LiveGuideAdapter.RowViewHolder)
+                ?.requestChannelFocus()
+        }
+    }
 }
 
 // ── EPG ──────────────────────────────────────────
@@ -184,6 +194,23 @@ internal fun MainActivity.ensurePreviewPlayer(): PlayerManager {
     })
     previewPlayerManager = manager
     return manager
+}
+
+/** RIGHT from the category sidebar on Live TV: into the guide, on the channel last focused there
+ *  when its row is fully on screen, else the first row that is. Left to Android, the sidebar's top
+ *  rows sent focus to the preview pane beside them instead. False on any other tab. */
+internal fun MainActivity.focusLiveGuide(): Boolean {
+    if (activeTab != 0 || !binding.liveContent.isShown) return false
+    val layout = binding.liveContent.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager ?: return false
+    val first = layout.findFirstCompletelyVisibleItemPosition()
+    if (first == androidx.recyclerview.widget.RecyclerView.NO_POSITION) return false
+    val lastId = lastFocusedLiveChannel?.id
+    val last = if (lastId == null) -1 else liveAdapter.currentList.indexOfFirst { it.id == lastId }
+    val position = if (last in first..layout.findLastCompletelyVisibleItemPosition()) last else first
+    val row = binding.liveContent.findViewHolderForAdapterPosition(position) as? com.lumora.adapter.LiveGuideAdapter.RowViewHolder
+        ?: return false
+    row.requestChannelFocus()
+    return true
 }
 
 internal fun MainActivity.showLivePreviewPane() {

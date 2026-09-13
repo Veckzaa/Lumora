@@ -41,6 +41,10 @@ class CategoryAdapter(
      *  Outside this RecyclerView, so unreachable via nextFocusUpId (see PosterGridAdapter). */
     var topRowFocusUpTargetId: Int = View.NO_ID
 
+    /** D-pad RIGHT from a row, ahead of Android's own focus search; true when it moved focus.
+     *  On Live TV the nearest view right of the top rows was the preview pane, not the guide. */
+    var onRowRight: (() -> Boolean)? = null
+
     fun setSelected(id: String?) {
         val oldId = selectedId
         if (oldId == id) return
@@ -110,6 +114,7 @@ class CategoryAdapter(
                     }
                     keyCode == KeyEvent.KEYCODE_DPAD_UP -> moveUp()
                     keyCode == KeyEvent.KEYCODE_DPAD_DOWN -> moveDown()
+                    keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> onRowRight?.invoke() == true
                     else -> false
                 }
             }
