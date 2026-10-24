@@ -9,7 +9,10 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import okhttp3.Cache
+import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 private const val TARGET_POSTER_WIDTH_PX = 220
@@ -39,6 +42,21 @@ object PosterLoader {
     private val inFlight = ConcurrentHashMap<String, Deferred<Bitmap?>>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /** Posters get a disk cache of their own. They shared the app's 50 MB HTTP cache with the
+     *  catalogue and Jellyfin item lists (21 MB of it on a 14k-item test catalogue), which
+     *  left room for ~200 posters, so scrolling Films re-downloaded nearly every one on each
+     *  launch. newBuilder() keeps the shared connection pool and auth interceptors. */
+    private val client: OkHttpClient by lazy {
+        val app = BaseApplication.instance
+        app.okHttpClient.newBuilder()
+            .cache(Cache(File(app.cacheDir, "poster_cache"), 80L * 1024 * 1024))
+            .build()
+    }
+
+    /** Panels hand out TMDB posters at 600x900 (~110 KB) for a ~220 px tile; w342 is about a
+     *  third of the bytes and of the decode work, and still downsamples to the tile size. */
+    private val tmdbSize = Regex("""^(https?://image\.tmdb\.org/t/p/)[^/]+/""")
+
     fun getCached(url: String): Bitmap? = cache.get(url)
 
     suspend fun fetch(url: String): Bitmap? {
@@ -66,8 +84,8 @@ object PosterLoader {
      *  the bounds decode reads past the read-limit, and the reset() then threw, which showed
      *  up as posters that silently never appeared. */
     private fun download(url: String): Bitmap? = runCatching {
-        val request = Request.Builder().url(url).build()
-        BaseApplication.instance.okHttpClient.newCall(request).execute().use { response ->
+        val request = Request.Builder().url(tmdbSize.replaceFirst(url, "$1w342/")).build()
+        client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) return@runCatching null
             val bytes = response.body?.bytes() ?: return@runCatching null
             if (bytes.isEmpty()) return@runCatching null
