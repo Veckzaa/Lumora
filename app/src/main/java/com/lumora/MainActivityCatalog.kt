@@ -428,7 +428,15 @@ internal fun MainActivity.deriveFilmsSeriesHalf(list: List<Channel>): MainActivi
             else ch.withResolvedYear()
         }
         val (groupedFilms, filmVers) = if (groupChannels) groupDuplicateMovies(rawFilms) else rawFilms to emptyMap()
-        films = groupedFilms.sortedByDescending { it.year?.toIntOrNull() ?: -1 }
+        // Newest year first, then newest addition first within a year. Panels list streams
+        // oldest-added first and number them in the order they're added, so year alone left
+        // every category running from January's additions to last week's. A grouped title
+        // ranks by its newest copy (the representative may be a Jellyfin one, with no number).
+        fun addedRank(ch: Channel): Long = (filmVers[ch.id] ?: listOf(ch)).maxOf { it.id.toLongOrNull() ?: -1L }
+        films = groupedFilms
+            .map { Triple(it, it.year?.toIntOrNull() ?: -1, addedRank(it)) }
+            .sortedWith(compareByDescending<Triple<Channel, Int, Long>> { it.second }.thenByDescending { it.third })
+            .map { it.first }
         versions = filmVers
     }
     // "Newest" pools the most recent releases (by date, not rating) into one shelf

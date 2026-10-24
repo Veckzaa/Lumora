@@ -696,11 +696,14 @@ data class CategoryGroup(val label: String, val members: List<CategoryFilter>, v
  *  most recent content appears first, regardless of category or source. */
 fun newestByDate(items: List<Channel>, limit: Int = 30): List<Channel> {
     fun dateKey(ch: Channel): String = ch.releaseDate?.takeIf { it.isNotBlank() } ?: ch.year?.let { "$it-01-01" } ?: ""
-    // Decorate-sort-undecorate: sortedByDescending re-runs its selector on every
-    // comparison (O(n log n) dateKey builds); computing each key once up front keeps
-    // the same stable sort (ties stay in original order), so output is unchanged.
-    return items.map { it to dateKey(it) }
-        .sortedByDescending { it.second }
+    // Decorate-sort-undecorate: keys are built once up front, not on every comparison.
+    // Xtream movies carry only a year, so every film of the current year tied on "YYYY-01-01"
+    // (366 of them on a real panel) and the shelf showed an arbitrary 30 - often not the ones
+    // the provider had just added. Panels number streams in the order they're added, so a
+    // higher numeric id breaks the tie towards the newest addition. Non-numeric ids (Jellyfin,
+    // Plex) sort after, but those carry full release dates and rarely tie.
+    return items.map { Triple(it, dateKey(it), it.id.toLongOrNull() ?: -1L) }
+        .sortedWith(compareByDescending<Triple<Channel, String, Long>> { it.second }.thenByDescending { it.third })
         .take(limit)
         .map { it.first }
 }
