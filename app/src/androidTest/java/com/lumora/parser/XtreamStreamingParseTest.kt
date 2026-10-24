@@ -83,7 +83,7 @@ class XtreamStreamingParseTest {
     @Test
     fun vodObjectPrefersItsOwnKeyOverItems() {
         respond(
-            """{"items":[{"stream_id":8}],"vod_streams":[{"stream_id":7,"name":"Film","stream_icon":"http://i/f.jpg","container_extension":"mkv","rating":7.5,"year":"2024","tmdb":"0","trailer":"https://youtu.be/abc123?t=1"},{"stream_id":9,"name":"Plain","tmdb":550}]}"""
+            """{"items":[{"stream_id":8}],"vod_streams":[{"stream_id":7,"name":"Film","stream_icon":"http://i/f.jpg","container_extension":"mkv","rating":7.5,"year":"2024","tmdb":"0","trailer":"https://youtu.be/abc123?t=1"},{"stream_id":9,"name":"Plain","tmdb":550,"stream_icon":null}]}"""
         )
         assertEquals(
             listOf(

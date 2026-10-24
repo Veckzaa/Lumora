@@ -418,10 +418,15 @@ class XtreamClient(private val client: OkHttpClient) {
      *  category row named "null". */
     private fun categoryNameOf(f: ItemFields): String = f.categoryName.let { if (it == null || it == "null") "" else it }
 
+    /** Same JSON-null rule for image fields: a panel sending `"stream_icon": null` gave every
+     *  movie the poster URL "null", which never loads, and which grouping took for a real
+     *  poster when picking which copy of a title to show. */
+    private fun imageUrlOf(value: String?): String? = value?.takeIf { it.isNotBlank() && it != "null" }
+
     private fun parseStream(f: ItemFields, mediaType: MediaType, urlPrefix: String, defaultContainer: String): Channel? {
         val streamId = f.streamId.orEmpty()
         if (streamId.isBlank()) return null
-        val streamIcon = f.streamIcon.orEmpty()
+        val streamIcon = imageUrlOf(f.streamIcon)
         // Archive/catch-up availability, live only. Panels are inconsistent about the JSON
         // type here - some send tv_archive as a number, some as the string "1" - and
         // both read as the same text.
@@ -432,8 +437,8 @@ class XtreamClient(private val client: OkHttpClient) {
             id = streamId,
             name = f.name ?: "Unknown",
             url = "$urlPrefix$streamId.${f.container ?: defaultContainer}",
-            logoUrl = streamIcon.ifBlank { null },
-            posterUrl = if (mediaType != MediaType.LIVE) streamIcon.ifBlank { null } else null,
+            logoUrl = streamIcon,
+            posterUrl = if (mediaType != MediaType.LIVE) streamIcon else null,
             categoryId = resolveCategoryId(f),
             categoryName = categoryNameOf(f),
             mediaType = mediaType,
@@ -454,13 +459,13 @@ class XtreamClient(private val client: OkHttpClient) {
     private fun parseSeriesItem(f: ItemFields): Channel? {
         val seriesId = f.seriesId.orEmpty()
         if (seriesId.isBlank()) return null
-        val cover = f.cover.orEmpty()
+        val cover = imageUrlOf(f.cover)
         return Channel(
             id = seriesId,
             name = f.name ?: "Unknown",
             url = "",
-            logoUrl = cover.ifBlank { null },
-            posterUrl = cover.ifBlank { null },
+            logoUrl = cover,
+            posterUrl = cover,
             categoryId = resolveCategoryId(f),
             categoryName = categoryNameOf(f),
             mediaType = MediaType.SERIES,
