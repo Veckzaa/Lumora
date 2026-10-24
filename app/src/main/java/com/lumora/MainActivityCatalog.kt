@@ -141,6 +141,15 @@ internal suspend fun MainActivity.classifyAndShow(preserveUi: Boolean = false) {
                             }
                         }
                     }
+                    // A "See all" grid shows a copy of its shelf's items taken when it was
+                    // opened, so a refresh re-showed the pre-refresh catalogue there until the
+                    // user left the grid. Re-point it at the fresh shelf of the same title
+                    // (the shelf adapter's identity too); a shelf that's gone drops back to
+                    // the shelves.
+                    if (selectedShelfItems != null) {
+                        val shelves = if (activeTab == 1) seriesShelves else filmShelves
+                        selectedShelfItems = shelves.firstOrNull { it.title == selectedCategoryLabel }?.items
+                    }
                     // A category-grid filter whose matchIds now match no item would leave an
                     // empty pane - fall back to the All view instead of showing nothing.
                     val matchIds = selectedCategoryIds
